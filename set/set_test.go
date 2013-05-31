@@ -1,0 +1,242 @@
+// This tests the set package
+package set
+
+import (
+	"sort"
+	"testing"
+)
+
+// Check the set is equal to the literal slice
+func assertEqual(t *testing.T, s *Set, b []int) {
+	a := make([]int, len(s.m))
+	i := 0
+	for elem := range s.m {
+		a[i] = int(elem)
+		i++
+	}
+	sort.Ints(a)
+	sort.Ints(b)
+	if len(a) != len(b) {
+		t.Fatalf("Bad lengths %v vs %v", a, b)
+	}
+	for i := range a {
+		if a[i] != b[i] {
+			t.Fatalf("%v != %v", a, b)
+		}
+	}
+}
+
+func TestNewSizedSet(t *testing.T) {
+	a := NewSizedSet(0)
+	if a.Len() != 0 {
+		t.Fatal()
+	}
+	a = NewSizedSet(100)
+	if a.Len() != 0 {
+		t.Fatal()
+	}
+}
+
+func TestNewSet(t *testing.T) {
+	a := NewSet()
+	if a.Len() != 0 {
+		t.Fatal()
+	}
+}
+
+func TestSetLen(t *testing.T) {
+	a := NewSet()
+	if a.Len() != 0 {
+		t.Fatal()
+	}
+	a.Add(1)
+	if a.Len() != 1 {
+		t.Fatal()
+	}
+	a.Discard(1)
+	if a.Len() != 0 {
+		t.Fatal()
+	}
+}
+
+func TestSetContains(t *testing.T) {
+	a := NewSet().Add(1)
+	if a.Contains(0) {
+		t.Fatal()
+	}
+	if !a.Contains(1) {
+		t.Fatal()
+	}
+	if a.Contains(2) {
+		t.Fatal()
+	}
+}
+
+func TestSetAdd(t *testing.T) {
+	a := NewSet().Add(1).Add(2).Add(3)
+	assertEqual(t, a, []int{1, 2, 3})
+}
+
+func TestSetAddList(t *testing.T) {
+	a := NewSet().AddList([]A{1, 2, 3})
+	assertEqual(t, a, []int{1, 2, 3})
+}
+
+func TestSetDiscard(t *testing.T) {
+	a := NewSet().Add(1).Add(3).Discard(1).Discard(2)
+	assertEqual(t, a, []int{3})
+}
+
+func TestSetRemove(t *testing.T) {
+	a := NewSet().Add(1).Add(3)
+	assertEqual(t, a, []int{1, 3})
+	if a.Remove(1) != true {
+		t.Fatal()
+	}
+	if a.Remove(2) != false {
+		t.Fatal()
+	}
+	assertEqual(t, a, []int{3})
+}
+
+func TestSetPop(t *testing.T) {
+	a := NewSet().Add(1).Add(3)
+	assertEqual(t, a, []int{1, 3})
+	elem, found := a.Pop(1)
+	if elem != 1 || found != true {
+		t.Fatal()
+	}
+	elem, found = a.Pop(2)
+	if elem != 2 || found != false {
+		t.Fatal()
+	}
+	assertEqual(t, a, []int{3})
+}
+
+func TestSetAsList(t *testing.T) {
+	a := NewSet().Add(1).Add(3)
+	assertEqual(t, a, []int{1, 3})
+	as := a.AsList()
+	if len(as) != 2 {
+		t.Fatal()
+	}
+	if as[1] < as[0] {
+		as[0], as[1] = as[1], as[0]
+	}
+	if as[0] != 1 || as[1] != 3 {
+		t.Fatal()
+	}
+}
+
+func TestSetClear(t *testing.T) {
+	a := NewSet().Add(1).Add(3)
+	assertEqual(t, a, []int{1, 3})
+	a.Clear()
+	assertEqual(t, a, []int{})
+}
+
+func TestSetCopy(t *testing.T) {
+	a := NewSet().Add(1).Add(3)
+	assertEqual(t, a, []int{1, 3})
+	b := a.Copy()
+	assertEqual(t, b, []int{1, 3})
+	if a == b || &a.m == &b.m {
+		t.Fatal()
+	}
+}
+
+func TestSetDifference(t *testing.T) {
+	assertEqual(t, NewSet().Difference(NewSet()), []int{})
+	a := NewSet().Add(1).Add(3)
+	b := NewSet().Add(1).Add(2)
+	assertEqual(t, a.Difference(b), []int{3})
+	assertEqual(t, a, []int{1, 3})
+	assertEqual(t, a.Difference(NewSet()), []int{1, 3})
+	assertEqual(t, a, []int{1, 3})
+	assertEqual(t, NewSet().Difference(a), []int{})
+	assertEqual(t, a, []int{1, 3})
+	assertEqual(t, b.Difference(a), []int{2})
+	assertEqual(t, b, []int{1, 2})
+}
+
+func TestSetDifferenceUpdate(t *testing.T) {
+	assertEqual(t, NewSet().DifferenceUpdate(NewSet()), []int{})
+	a := NewSet().Add(1).Add(3)
+	b := NewSet().Add(1).Add(2)
+	assertEqual(t, a.DifferenceUpdate(b), []int{3})
+	a.DifferenceUpdate(b)
+	assertEqual(t, a, []int{3})
+	assertEqual(t, a.DifferenceUpdate(NewSet()), []int{3})
+	assertEqual(t, NewSet().DifferenceUpdate(a), []int{})
+	a.Add(1)
+	assertEqual(t, b.DifferenceUpdate(a), []int{2})
+	assertEqual(t, b, []int{2})
+}
+
+func TestSetIntersection(t *testing.T) {
+	a := NewSet()
+	b := NewSet()
+	assertEqual(t, a.Intersection(b), []int{})
+	assertEqual(t, b.Intersection(a), []int{})
+	a.Add(1)
+	a.Add(2)
+	b.Add(2)
+	b.Add(3)
+	assertEqual(t, a.Intersection(b), []int{2})
+	assertEqual(t, a, []int{1, 2})
+	assertEqual(t, b.Intersection(a), []int{2})
+	assertEqual(t, b, []int{2, 3})
+}
+
+func TestSetIntersectionUpdate(t *testing.T) {
+	a := NewSet()
+	b := NewSet()
+	assertEqual(t, a.IntersectionUpdate(b), []int{})
+	assertEqual(t, b.IntersectionUpdate(a), []int{})
+	a.Add(1)
+	a.Add(2)
+	b.Add(2)
+	b.Add(3)
+	assertEqual(t, a.IntersectionUpdate(b), []int{2})
+	assertEqual(t, a, []int{2})
+	a.Add(1)
+	a.Add(2)
+	b.Add(2)
+	b.Add(3)
+	assertEqual(t, b.IntersectionUpdate(a), []int{2})
+	assertEqual(t, b, []int{2})
+}
+
+func TestSetUnion(t *testing.T) {
+	a := NewSet()
+	b := NewSet()
+	assertEqual(t, a.Union(b), []int{})
+	assertEqual(t, b.Union(a), []int{})
+	a.Add(1)
+	a.Add(2)
+	b.Add(2)
+	b.Add(3)
+	assertEqual(t, a.Union(b), []int{1, 2, 3})
+	assertEqual(t, a, []int{1, 2})
+	a.Clear().Add(1).Add(2)
+	b.Clear().Add(2).Add(3)
+	assertEqual(t, b.Union(a), []int{1, 2, 3})
+	assertEqual(t, b, []int{2, 3})
+}
+
+func TestSetUpdate(t *testing.T) {
+	a := NewSet()
+	b := NewSet()
+	assertEqual(t, a.Update(b), []int{})
+	assertEqual(t, b.Update(a), []int{})
+	a.Add(1)
+	a.Add(2)
+	b.Add(2)
+	b.Add(3)
+	assertEqual(t, a.Update(b), []int{1, 2, 3})
+	assertEqual(t, a, []int{1, 2, 3})
+	a.Clear().Add(1).Add(2)
+	b.Clear().Add(2).Add(3)
+	assertEqual(t, b.Update(a), []int{1, 2, 3})
+	assertEqual(t, b, []int{1, 2, 3})
+}
