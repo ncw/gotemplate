@@ -149,6 +149,16 @@ func parseInputFile(inputFile string) (ts []*templateInstantiation) {
 	return ts
 }
 
+// Returns true if haystack contains needle
+func containsString(needle string, haystack []string) bool {
+	for _, item := range haystack {
+		if item == needle {
+			return true
+		}
+	}
+	return false
+}
+
 // Parses the template file
 //
 // ...
@@ -185,9 +195,10 @@ func (ti *templateInstantiation) parse(inputFile string) {
 	// debugf("Decls = %#v", f.Decls)
 	// Find names which need to be adjusted
 	namesToMangle := []string{}
-	nDeclsArgs := []int{}
+	newDecls := []ast.Decl{}
 OUTER:
-	for nDecl, Decl := range f.Decls {
+	for _, Decl := range f.Decls {
+		remove := false
 		switch d := Decl.(type) {
 		case *ast.GenDecl:
 			// A general definition
@@ -211,13 +222,8 @@ OUTER:
 				t := d.Specs[0].(*ast.TypeSpec)
 				debugf("Type %v", t.Name.Name)
 				namesToMangle = append(namesToMangle, t.Name.Name)
-				// Find type A int declarations so we can remove them later
-				for _, arg := range templateArgs {
-					if t.Name.Name == arg {
-						nDeclsArgs = append(nDeclsArgs, nDecl)
-						break
-					}
-				}
+				// Remove type A if it is a template definition
+				remove = containsString(t.Name.Name, templateArgs)
 			default:
 				logf("Unknown type %s", d.Tok)
 			}
@@ -231,16 +237,19 @@ OUTER:
 			//debugf("FuncDecl = %#v", d)
 			debugf("FuncDecl = %s", d.Name.Name)
 			namesToMangle = append(namesToMangle, d.Name.Name)
+			// Remove func A() if it is a template definition
+			remove = containsString(d.Name.Name, templateArgs)
 		default:
 			fatalf("Unknown Decl %#v", Decl)
+		}
+		if !remove {
+			newDecls = append(newDecls, Decl)
 		}
 	}
 	debugf("Names to mangle = %#v", namesToMangle)
 
 	// Remove the stub type definitions "type A int" from the package
-	for _, nDecls := range nDeclsArgs {
-		f.Decls = append(f.Decls[:nDecls], f.Decls[nDecls+1:]...)
-	}
+	f.Decls = newDecls
 
 	// Make the name mappings
 	mappings := make(map[string]string)
@@ -253,10 +262,14 @@ OUTER:
 	// FIXME factor to method
 	// FIXME put mappings as member
 	addMapping := func(name string) {
+		replacementName := ""
 		if !strings.Contains(name, templateName) {
-			fatalf("Top level definition '%s' doesn't contain template name '%s'", name, templateName)
+			// If name doesn't contain template name then just postfix it
+			replacementName = name + templateName
+			debugf("Top level definition '%s' doesn't contain template name '%s', using '%s'", name, templateName, replacementName)
+		} else {
+			replacementName = strings.Replace(name, templateName, ti.Name, 1)
 		}
-		replacementName := strings.Replace(name, templateName, ti.Name, 1)
 		// If new template name is not public then make sure
 		// the exported name is not public too
 		if !newIsPublic && ast.IsExported(replacementName) {

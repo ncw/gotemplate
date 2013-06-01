@@ -104,6 +104,22 @@ Optional parametrs?
 
 FIXME only 1 .go file is used when reading templates at the moment
 
+Philosophy
+----------
+
+All code (templates, use of templates and template instantiations)
+should be normal Go code - no special types / extensions.
+
+All configuration done with specially formatted comments
+
+Should provide lots practical templates people can use right now.
+
+
+Similar Projects
+----------------
+
+https://github.com/droundy/gotgo/ - uses .got files
+
 License
 -------
 
