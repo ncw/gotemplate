@@ -52,7 +52,7 @@ func parseExpr(s string, what string) ast.Expr {
 /*
 func dump(msg string, val reflect.Value) {
 	fmt.Printf("%s:\n", msg)
-	ast.Print(fset, val.Interface())
+	ast.Print(fileSet, val.Interface())
 	fmt.Println()
 }
 */
@@ -63,8 +63,9 @@ func rewriteFile(fileSet *token.FileSet, pattern, replace ast.Expr, p *ast.File)
 	m := make(map[string]reflect.Value)
 	pat := reflect.ValueOf(pattern)
 	repl := reflect.ValueOf(replace)
-	var f func(val reflect.Value) reflect.Value // f is recursive
-	f = func(val reflect.Value) reflect.Value {
+
+	var rewriteVal func(val reflect.Value) reflect.Value
+	rewriteVal = func(val reflect.Value) reflect.Value {
 		// don't bother if val is invalid to start with
 		if !val.IsValid() {
 			return reflect.Value{}
@@ -72,22 +73,22 @@ func rewriteFile(fileSet *token.FileSet, pattern, replace ast.Expr, p *ast.File)
 		for k := range m {
 			delete(m, k)
 		}
-		val = apply(f, val)
+		val = apply(rewriteVal, val)
 		if match(m, pat, val) {
 			val = subst(m, repl, reflect.ValueOf(val.Interface().(ast.Node).Pos()))
 		}
 		return val
 	}
-	r := apply(f, reflect.ValueOf(p)).Interface().(*ast.File)
+
+	r := apply(rewriteVal, reflect.ValueOf(p)).Interface().(*ast.File)
 	r.Comments = cmap.Filter(r).Comments() // recreate comments list
 	return r
 }
 
-// setValue is a wrapper for x.SetValue(y); it protects
-// the caller from panics if x cannot be changed to y.
-func setValue(x, y reflect.Value) {
-	// don't bother if y is invalid to start with
-	if !y.IsValid() {
+// set is a wrapper for x.Set(y); it protects the caller from panics if x cannot be changed to y.
+func set(x, y reflect.Value) {
+	// don't bother if x cannot be set or y is invalid
+	if !x.CanSet() || !y.IsValid() {
 		return
 	}
 	defer func() {
@@ -111,6 +112,7 @@ var (
 	identType     = reflect.TypeOf((*ast.Ident)(nil))
 	objectPtrType = reflect.TypeOf((*ast.Object)(nil))
 	positionType  = reflect.TypeOf(token.NoPos)
+	callExprType  = reflect.TypeOf((*ast.CallExpr)(nil))
 	scopePtrType  = reflect.TypeOf((*ast.Scope)(nil))
 )
 
@@ -137,16 +139,16 @@ func apply(f func(reflect.Value) reflect.Value, val reflect.Value) reflect.Value
 	case reflect.Slice:
 		for i := 0; i < v.Len(); i++ {
 			e := v.Index(i)
-			setValue(e, f(e))
+			set(e, f(e))
 		}
 	case reflect.Struct:
 		for i := 0; i < v.NumField(); i++ {
 			e := v.Field(i)
-			setValue(e, f(e))
+			set(e, f(e))
 		}
 	case reflect.Interface:
 		e := v.Elem()
-		setValue(v, f(e))
+		set(v, f(e))
 	}
 	return val
 }
@@ -196,8 +198,17 @@ func match(m map[string]reflect.Value, pattern, val reflect.Value) bool {
 		v := val.Interface().(*ast.Ident)
 		return p == nil && v == nil || p != nil && v != nil && p.Name == v.Name
 	case objectPtrType, positionType:
-		// object pointers and token positions don't need to match
+		// object pointers and token positions always match
 		return true
+	case callExprType:
+		// For calls, the Ellipsis fields (token.Position) must
+		// match since that is how f(x) and f(x...) are different.
+		// Check them here but fall through for the remaining fields.
+		p := pattern.Interface().(*ast.CallExpr)
+		v := val.Interface().(*ast.CallExpr)
+		if p.Ellipsis.IsValid() != v.Ellipsis.IsValid() {
+			return false
+		}
 	}
 
 	p := reflect.Indirect(pattern)
