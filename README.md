@@ -1,7 +1,10 @@
 Go templates
 ============
 
-This tool manages package based templates for the Go language.
+This tool manages package based templates for the Go language using
+"go generate" which requires go 1.4.
+
+(Design docs for go generate)[https://docs.google.com/document/d/1V03LUfjSADDooDMhe-_K59EgpTEm3V8uvQRuNMAEnjg/edit?pli=1]
 
 Install
 -------
@@ -22,22 +25,25 @@ Using templates
 To use a template, first you must tell `gotemplate` that you want to
 use it using a special comment in your code.  For example
 
-    // template "github.com/ncw/gotemplate/set" mySet(string)
+    //go:generate gotemplate "github.com/ncw/gotemplate/set" mySet(string)
 
-This tells `gotemplate` that you want to use the set template with the
-`string` type parameter and with the local name `mySet`.
+This tells `go generate` to run `gotemplate` and that you want to use
+the set template with the `string` type parameter and with the local
+name `mySet`.
 
-Now run `gotemplate` in your code directory with no arguments.  This
+Now run `go generate` in your code directory with no arguments.  This
 will instantiate the template into a file called `gotemplate_mySet.go`
 which will provide a `mySet` type and `newmySet` and `newSizesmySet`
 functions to make them.
 
-FIXME outptut of the command goes here
+    $go generate
+    gotemplate: substituting "github.com/ncw/gotemplate/set" with mySet(string) into package main
+    Written 'gotemplate_mySet.go'
 
 If you use an initial capital when you name your template
 instantiation then any external functions will be public.  Eg
 
-    // template "github.com/ncw/gotemplate/set" MySet(string)
+    //go:generate gotemplate "github.com/ncw/gotemplate/set" MySet(string)
 
 Would give you `MySet`, `NewMySet` and `NewSizedMySet` instead.
 
@@ -45,8 +51,8 @@ You can use multiple templates and you can use the same template with
 different paramters.  In that case you must give it a different name,
 eg
 
-    // template "github.com/ncw/gotemplate/set" StringSet(string)
-    // template "github.com/ncw/gotemplate/set" FloatSet(float64)
+    //go:generate gotemplate "github.com/ncw/gotemplate/set" StringSet(string)
+    //go:generate gotemplate "github.com/ncw/gotemplate/set" FloatSet(float64)
 
 Instantiating the templates into your project gives them the ability
 to use internal types from your project.
@@ -60,8 +66,14 @@ Templates can be installed using `go get` because they are normal Go packages.  
 
 Will install a template package you can use with
 
-    // template "github.com/someones/template" T(Potato)
+    //go:generate gotemplate "github.com/someones/template" T(Potato)
 
+Source control for templates
+----------------------------
+
+It is expected that the generated files will be checked into version
+control, and users of your code will just run `go get` to fetch it.
+`go generate` will only be run by delopers of the package.
 
 Writing templates
 -----------------
@@ -94,15 +106,19 @@ There may be constraints on the types which aren't understood by
 `gotemplate`.  For instance the set requires that the types are
 comparable.  If you try this you'll get a compile error for example.
 
-    // template "github.com/ncw/gotemplate/set" BytesSet([]byte)
+    //go:generate gotemplate "github.com/ncw/gotemplate/set" BytesSet([]byte)
 
-FIXME make a set type for non comparable things?
+Only 1 .go file is used when reading template definitions at the
+moment (programmer laziness - will fix!)
 
-FIXME make sure that types implement an interface? Or pass in a compare routine?
+Ideas for the future
+--------------------
 
-Optional parametrs?
+Make a set type for non comparable things?  Pass in a compare routine?
 
-FIXME only 1 .go file is used when reading templates at the moment
+Make sure that types implement an interface?
+
+Optional parameters?
 
 Philosophy
 ----------
@@ -113,12 +129,6 @@ should be normal Go code - no special types / extensions.
 All configuration done with specially formatted comments
 
 Should provide lots practical templates people can use right now.
-
-
-Similar Projects
-----------------
-
-https://github.com/droundy/gotgo/ - uses .got files
 
 License
 -------
