@@ -104,20 +104,47 @@ func parseFile(path string) (*token.FileSet, *ast.File) {
 
 // Holds the desired templateInstantiation
 type templateInstantiation struct {
-	Package    string
-	Name       string
-	Args       []string
-	NewPackage string
-	Dir        string
+	Package      string
+	Name         string
+	Args         []string
+	NewPackage   string
+	Dir          string
+	templateName string
+	templateArgs []string
+	mappings     map[string]string
+	newIsPublic  bool
+	inputFile    string
 }
 
-// Parse the arguments string in Template(A, B, C)
-//
-// FIXME use the Go parser for this?
-func parseArgs(s string) (args []string) {
-	for _, arg := range strings.Split(s, ",") {
-		arg = strings.TrimSpace(arg)
-		args = append(args, arg)
+// init the template instantiation
+func (ti *templateInstantiation) init() {
+	ti.mappings = make(map[string]string)
+}
+
+// Parse the arguments string Template(A, B, C)
+func parseTemplateAndArgs(s string) (name string, args []string) {
+	expr, err := parser.ParseExpr(s)
+	if err != nil {
+		fatalf("Failed to parse %q: %v", s, err)
+	}
+	debugf("expr = %#v\n", expr)
+	callExpr, ok := expr.(*ast.CallExpr)
+	if !ok {
+		fatalf("Failed to parse %q: expecting Identifier(...)", s)
+	}
+	debugf("fun = %#v", callExpr.Fun)
+	fn, ok := callExpr.Fun.(*ast.Ident)
+	if !ok {
+		fatalf("Failed to parse %q: expecting Identifier(...)", s)
+	}
+	name = fn.Name
+	for i, arg := range callExpr.Args {
+		var buf bytes.Buffer
+		debugf("arg[%d] = %#v", i, arg)
+		format.Node(&buf, token.NewFileSet(), arg)
+		s := buf.String()
+		debugf("parsed = %q", s)
+		args = append(args, s)
 	}
 	return
 }
@@ -132,37 +159,77 @@ func containsString(needle string, haystack []string) bool {
 	return false
 }
 
+// Replace the identifers in f
+func replaceIdentifier(f *ast.File, old, new string) {
+	// Inspect the AST and print all identifiers and literals.
+	ast.Inspect(f, func(n ast.Node) bool {
+		switch x := n.(type) {
+		case *ast.Ident:
+			// We replace the identifier name
+			// which is a bit untidy if we weren't
+			// replacing with an identifier
+			if x.Name == old {
+				x.Name = new
+			}
+		}
+		return true
+	})
+}
+
+// Add a mapping for identifier
+func (ti *templateInstantiation) addMapping(name string) {
+	replacementName := ""
+	if !strings.Contains(name, ti.templateName) {
+		// If name doesn't contain template name then just prefix it
+		replacementName = name + ti.Name
+		debugf("Top level definition '%s' doesn't contain template name '%s', using '%s'", name, ti.templateName, replacementName)
+	} else {
+		replacementName = strings.Replace(name, ti.templateName, ti.Name, 1)
+	}
+	// If new template name is not public then make sure
+	// the exported name is not public too
+	if !ti.newIsPublic && ast.IsExported(replacementName) {
+		replacementName = strings.ToLower(replacementName[:1]) + replacementName[1:]
+	}
+	ti.mappings[name] = replacementName
+}
+
 // "template type Set(A)"
-var matchTemplateType = regexp.MustCompile(`^/[*/]\s+template\s+type\s+(\w+)\((.*?)\)\s*$`)
+var matchTemplateType = regexp.MustCompile(`^//\s*template\s+type\s+(\w+\s*.*?)\s*$`)
 
-// Parses the template file
-func (ti *templateInstantiation) parse(inputFile string) {
-	newIsPublic := ast.IsExported(ti.Name)
-
-	fset, f := parseFile(inputFile)
-
+func (ti *templateInstantiation) findTemplateDefinition(f *ast.File) {
 	// Inspect the comments
-	templateName := ""
-	templateArgs := []string{}
+	ti.templateName = ""
+	ti.templateArgs = nil
 	for _, cg := range f.Comments {
 		for _, x := range cg.List {
 			matches := matchTemplateType.FindStringSubmatch(x.Text)
 			if matches != nil {
-				if templateName != "" {
-					fatalf("Found multiple template definitions in %s", inputFile)
+				if ti.templateName != "" {
+					fatalf("Found multiple template definitions in %s", ti.inputFile)
 				}
-				templateName = matches[1]
-				templateArgs = parseArgs(matches[2])
+				ti.templateName, ti.templateArgs = parseTemplateAndArgs(matches[1])
 			}
 		}
 	}
-	if templateName == "" {
-		fatalf("Didn't find template definition in %s", inputFile)
+	if ti.templateName == "" {
+		fatalf("Didn't find template definition in %s", ti.inputFile)
 	}
-	if len(templateArgs) != len(ti.Args) {
-		fatalf("Wrong number of arguments - template is expecting %d but %d supplied", len(ti.Args), len(templateArgs))
+	if len(ti.templateArgs) != len(ti.Args) {
+		fatalf("Wrong number of arguments - template is expecting %d but %d supplied", len(ti.Args), len(ti.templateArgs))
 	}
-	debugf("templateName = %v, templateArgs = %v", templateName, templateArgs)
+	debugf("templateName = %v, templateArgs = %v", ti.templateName, ti.templateArgs)
+}
+
+// Parses the template file
+func (ti *templateInstantiation) parse(inputFile string) {
+	ti.inputFile = inputFile
+	// Make the name mappings
+	ti.newIsPublic = ast.IsExported(ti.Name)
+
+	fset, f := parseFile(inputFile)
+	ti.findTemplateDefinition(f)
+
 	// debugf("Decls = %#v", f.Decls)
 	// Find names which need to be adjusted
 	namesToMangle := []string{}
@@ -192,7 +259,7 @@ func (ti *templateInstantiation) parse(inputFile string) {
 				debugf("Type %v", t.Name.Name)
 				namesToMangle = append(namesToMangle, t.Name.Name)
 				// Remove type A if it is a template definition
-				remove = containsString(t.Name.Name, templateArgs)
+				remove = containsString(t.Name.Name, ti.templateArgs)
 			default:
 				logf("Unknown type %s", d.Tok)
 			}
@@ -206,7 +273,7 @@ func (ti *templateInstantiation) parse(inputFile string) {
 				debugf("FuncDecl = %s", d.Name.Name)
 				namesToMangle = append(namesToMangle, d.Name.Name)
 				// Remove func A() if it is a template definition
-				remove = containsString(d.Name.Name, templateArgs)
+				remove = containsString(d.Name.Name, ti.templateArgs)
 			}
 		default:
 			fatalf("Unknown Decl %#v", Decl)
@@ -220,51 +287,29 @@ func (ti *templateInstantiation) parse(inputFile string) {
 	// Remove the stub type definitions "type A int" from the package
 	f.Decls = newDecls
 
-	// Make the name mappings
-	mappings := make(map[string]string)
-
 	// Map the type definitions A -> string, B -> int
 	for i := range ti.Args {
-		mappings[templateArgs[i]] = ti.Args[i]
-	}
-
-	// FIXME factor to method
-	// FIXME put mappings as member
-	addMapping := func(name string) {
-		replacementName := ""
-		if !strings.Contains(name, templateName) {
-			// If name doesn't contain template name then just prefix it
-			replacementName = name + ti.Name
-			debugf("Top level definition '%s' doesn't contain template name '%s', using '%s'", name, templateName, replacementName)
-		} else {
-			replacementName = strings.Replace(name, templateName, ti.Name, 1)
-		}
-		// If new template name is not public then make sure
-		// the exported name is not public too
-		if !newIsPublic && ast.IsExported(replacementName) {
-			replacementName = strings.ToLower(replacementName[:1]) + replacementName[1:]
-		}
-		mappings[name] = replacementName
+		ti.mappings[ti.templateArgs[i]] = ti.Args[i]
 	}
 
 	found := false
 	for _, name := range namesToMangle {
-		if name == templateName {
+		if name == ti.templateName {
 			found = true
-			addMapping(name)
-		} else if _, found := mappings[name]; !found {
-			addMapping(name)
+			ti.addMapping(name)
+		} else if _, found := ti.mappings[name]; !found {
+			ti.addMapping(name)
 		}
 
 	}
 	if !found {
-		fatalf("No definition for template type '%s'", templateName)
+		fatalf("No definition for template type '%s'", ti.templateName)
 	}
-	debugf("mappings = %#v", mappings)
+	debugf("mappings = %#v", ti.mappings)
 
-	newFile := f
-	for name, replacement := range mappings {
-		newFile = rewriteFile(fset, parseExpr(name, "pattern"), parseExpr(replacement, "replacement"), newFile)
+	// Replace the identifiers
+	for name, replacement := range ti.mappings {
+		replaceIdentifier(f, name, replacement)
 	}
 
 	// Change the package to the local package name
@@ -272,7 +317,7 @@ func (ti *templateInstantiation) parse(inputFile string) {
 
 	// Output
 	outputFileName := "gotemplate_" + ti.Name + ".go"
-	outputFile(fset, newFile, outputFileName)
+	outputFile(fset, f, outputFileName)
 	logf("Written '%s'", outputFileName)
 }
 
@@ -311,19 +356,6 @@ func usage() {
 	os.Exit(1)
 }
 
-var matchTemplateWithArgs = regexp.MustCompile(`^(\w+)\((.*?)\)\s*$`)
-
-// Parse the arguments string Template(A, B, C)
-//
-// FIXME use the Go parser for this?
-func parseTemplateAndArgs(s string) (name string, args []string) {
-	matches := matchTemplateWithArgs.FindStringSubmatch(s)
-	if matches == nil {
-		fatalf("Bad template replacement string %q", s)
-	}
-	return matches[1], parseArgs(matches[2])
-}
-
 // findPackageName reads all the go packages in the curent directory
 // and finds which package they are in
 func findPackageName() string {
@@ -357,6 +389,7 @@ func main() {
 		NewPackage: currentPackageName,
 		Dir:        cwd,
 	}
+	ti.init()
 	logf("%s: substituting %q with %s(%s) into package %s", os.Args[0], ti.Package, ti.Name, strings.Join(ti.Args, ","), ti.NewPackage)
 
 	ti.instantiate()
