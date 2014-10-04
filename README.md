@@ -4,7 +4,7 @@ Go templates
 This tool manages package based templates for the Go language using
 "go generate" which requires go 1.4.
 
-(Design docs for go generate)[https://docs.google.com/document/d/1V03LUfjSADDooDMhe-_K59EgpTEm3V8uvQRuNMAEnjg/edit?pli=1]
+[Design docs for go generate](https://docs.google.com/document/d/1V03LUfjSADDooDMhe-_K59EgpTEm3V8uvQRuNMAEnjg/edit?pli=1)
 
 Install
 -------
@@ -17,7 +17,9 @@ and this will build the `gotemplate` binary in `$GOPATH/bin`.
 
 It will also pull in a set of templates you can start using straight away
 
-FIXME link to templates
+  * [set](http://godoc.org/github.com/ncw/gotemplate/set)
+  * [list](http://godoc.org/github.com/ncw/gotemplate/list)
+  * [sort](http://godoc.org/github.com/ncw/gotemplate/sort)
 
 Using templates
 ---------------
@@ -36,9 +38,12 @@ will instantiate the template into a file called `gotemplate_mySet.go`
 which will provide a `mySet` type and `newmySet` and `newSizesmySet`
 functions to make them.
 
-    $go generate
-    gotemplate: substituting "github.com/ncw/gotemplate/set" with mySet(string) into package main
+    $ go generate
+    substituting "github.com/ncw/gotemplate/set" with mySet(string) into package main
     Written 'gotemplate_mySet.go'
+
+Instantiating the templates into your project gives them the ability
+to use internal types from your project.
 
 If you use an initial capital when you name your template
 instantiation then any external functions will be public.  Eg
@@ -54,19 +59,62 @@ eg
     //go:generate gotemplate "github.com/ncw/gotemplate/set" StringSet(string)
     //go:generate gotemplate "github.com/ncw/gotemplate/set" FloatSet(float64)
 
-Instantiating the templates into your project gives them the ability
-to use internal types from your project.
+If the parameters have spaces in then they need to be in quotes, eg
+
+    //go:generate gotemplate "github.com/ncw/gotemplate/sort" "SortGt(string, func(a, b string) bool { return a > b })"
+
+Renaming rules
+--------------
+
+All top level identifiers will be substituted when the template is
+instantiated.  This is to ensure that they are unique if the template
+is instantiated more than once.
+
+Any identifiers with the template name in (eg `Set`) will have the
+template name (eg `Set`) part substituted.
+
+Any identifiers without the template name in will just be postfixed
+with the template name.
+
+So if this was run
+
+    //go:generate gotemplate "github.com/ncw/gotemplate/set" MySet(string)
+
+This would substitute these top level identifiers
+
+  * `Set` to `MySet`
+  * `NewSet` to `NewMySet`
+  * `NewSizedSet` to `NewSizedMySet`
+  * `utilityFunc` to `utilityFuncMySet`
+
+Depending on whether the template name is public (initial capital) or
+not, all the public external identifiers will have their initial
+capitals turned into lower case.  So if this was run
+
+    //go:generate gotemplate "github.com/ncw/gotemplate/set" mySet(string)
+
+This would substitute
+
+  * `Set` to `mySet`
+  * `NewSet` to `newmySet`
+  * `NewSizedSet` to `newSizedmySet`
+  * `utilityFunc` to `utilityFuncmySet`
 
 Installing templates
 --------------------
 
-Templates can be installed using `go get` because they are normal Go packages.  Eg
+Templates can be installed using `go get` because they are normal Go
+packages.  Eg
 
     go get github.com/someones/template
 
-Will install a template package you can use with
+Will install a template package you can use in your code with
 
     //go:generate gotemplate "github.com/someones/template" T(Potato)
+
+Then instantiate with
+
+    go generate
 
 Source control for templates
 ----------------------------
@@ -97,7 +145,10 @@ parameter `A`.  When you are writing the template package make sure
 you use `A` instead of `int` where you want it to be substituted with
 a new type when the template is instantiated.
 
-All non test go files will be used as templates
+All the definitions of the template parameters will be removed from
+the instantiated template.
+
+All test files are ignored.
 
 Bugs
 ----
@@ -108,8 +159,8 @@ comparable.  If you try this you'll get a compile error for example.
 
     //go:generate gotemplate "github.com/ncw/gotemplate/set" BytesSet([]byte)
 
-Only 1 .go file is used when reading template definitions at the
-moment (programmer laziness - will fix!)
+Only one .go file is used when reading template definitions at the
+moment (programmer laziness - will fix at some point!)
 
 Ideas for the future
 --------------------
@@ -136,21 +187,25 @@ License
 This is free software under the terms of MIT the license (check the
 COPYING file included in this package).
 
+Portions of the code have been copied from the Go source.  These are
+identified by comments at the head of each file and these are
+Copyright (c) The Go Authors.  See the GO-LICENSE file for full details.
+
 Contact and support
 -------------------
 
 The project website is at:
 
-- https://github.com/ncw/gotemplate
+  * https://github.com/ncw/gotemplate
 
 There you can file bug reports, ask for help or contribute patches.
 
 Authors
 -------
 
-- Nick Craig-Wood <nick@craig-wood.com>
+  * Nick Craig-Wood <nick@craig-wood.com>
 
 Contributors
 ------------
 
-- Your name goes here!
+  * Your name goes here!
