@@ -24,20 +24,12 @@ do replacements in comments too?
 */
 
 import (
-	"bytes"
 	"flag"
 	"fmt"
-	"go/ast"
-	"go/build"
-	"go/format"
-	"go/parser"
-	"go/token"
-	"io/ioutil"
+
 	"log"
 	"os"
 	"path"
-	"regexp"
-	"strings"
 )
 
 // Globals
@@ -62,288 +54,6 @@ func debugf(format string, args ...interface{}) {
 	}
 }
 
-// Convert a Fileset and Ast into a string
-//
-// The file is passed through go format
-func gofmtFile(fset *token.FileSet, f *ast.File) ([]byte, error) {
-	var buf bytes.Buffer
-	if err := format.Node(&buf, fset, f); err != nil {
-		return nil, err
-	}
-	return buf.Bytes(), nil
-}
-
-// Ouput the go formatted file
-//
-// Exits with a fatal error on error
-func outputFile(fset *token.FileSet, f *ast.File, path string) {
-	source, err := gofmtFile(fset, f)
-	if err != nil {
-		fatalf("Failed to output '%s': %s", path, err)
-	}
-	err = ioutil.WriteFile(path, source, 0777)
-	if err != nil {
-		fatalf("Failed to write '%s': %s", path, err)
-	}
-}
-
-// Parses a file into a Fileset and Ast
-//
-// Dies with a fatal error on error
-func parseFile(path string) (*token.FileSet, *ast.File) {
-	fset := token.NewFileSet() // positions are relative to fset
-
-	// Parse the file containing this very example
-	// but stop after processing the imports.
-	f, err := parser.ParseFile(fset, path, nil, parser.ParseComments)
-	if err != nil {
-		fatalf("Failed to parse file: %s", err)
-	}
-	return fset, f
-}
-
-// Holds the desired templateInstantiation
-type templateInstantiation struct {
-	Package      string
-	Name         string
-	Args         []string
-	NewPackage   string
-	Dir          string
-	templateName string
-	templateArgs []string
-	mappings     map[string]string
-	newIsPublic  bool
-	inputFile    string
-}
-
-// init the template instantiation
-func (ti *templateInstantiation) init() {
-	ti.mappings = make(map[string]string)
-}
-
-// Parse the arguments string Template(A, B, C)
-func parseTemplateAndArgs(s string) (name string, args []string) {
-	expr, err := parser.ParseExpr(s)
-	if err != nil {
-		fatalf("Failed to parse %q: %v", s, err)
-	}
-	debugf("expr = %#v\n", expr)
-	callExpr, ok := expr.(*ast.CallExpr)
-	if !ok {
-		fatalf("Failed to parse %q: expecting Identifier(...)", s)
-	}
-	debugf("fun = %#v", callExpr.Fun)
-	fn, ok := callExpr.Fun.(*ast.Ident)
-	if !ok {
-		fatalf("Failed to parse %q: expecting Identifier(...)", s)
-	}
-	name = fn.Name
-	for i, arg := range callExpr.Args {
-		var buf bytes.Buffer
-		debugf("arg[%d] = %#v", i, arg)
-		format.Node(&buf, token.NewFileSet(), arg)
-		s := buf.String()
-		debugf("parsed = %q", s)
-		args = append(args, s)
-	}
-	return
-}
-
-// Returns true if haystack contains needle
-func containsString(needle string, haystack []string) bool {
-	for _, item := range haystack {
-		if item == needle {
-			return true
-		}
-	}
-	return false
-}
-
-// Replace the identifers in f
-func replaceIdentifier(f *ast.File, old, new string) {
-	// Inspect the AST and print all identifiers and literals.
-	ast.Inspect(f, func(n ast.Node) bool {
-		switch x := n.(type) {
-		case *ast.Ident:
-			// We replace the identifier name
-			// which is a bit untidy if we weren't
-			// replacing with an identifier
-			if x.Name == old {
-				x.Name = new
-			}
-		}
-		return true
-	})
-}
-
-// Add a mapping for identifier
-func (ti *templateInstantiation) addMapping(name string) {
-	replacementName := ""
-	if !strings.Contains(name, ti.templateName) {
-		// If name doesn't contain template name then just prefix it
-		replacementName = name + ti.Name
-		debugf("Top level definition '%s' doesn't contain template name '%s', using '%s'", name, ti.templateName, replacementName)
-	} else {
-		replacementName = strings.Replace(name, ti.templateName, ti.Name, 1)
-	}
-	// If new template name is not public then make sure
-	// the exported name is not public too
-	if !ti.newIsPublic && ast.IsExported(replacementName) {
-		replacementName = strings.ToLower(replacementName[:1]) + replacementName[1:]
-	}
-	ti.mappings[name] = replacementName
-}
-
-// "template type Set(A)"
-var matchTemplateType = regexp.MustCompile(`^//\s*template\s+type\s+(\w+\s*.*?)\s*$`)
-
-func (ti *templateInstantiation) findTemplateDefinition(f *ast.File) {
-	// Inspect the comments
-	ti.templateName = ""
-	ti.templateArgs = nil
-	for _, cg := range f.Comments {
-		for _, x := range cg.List {
-			matches := matchTemplateType.FindStringSubmatch(x.Text)
-			if matches != nil {
-				if ti.templateName != "" {
-					fatalf("Found multiple template definitions in %s", ti.inputFile)
-				}
-				ti.templateName, ti.templateArgs = parseTemplateAndArgs(matches[1])
-			}
-		}
-	}
-	if ti.templateName == "" {
-		fatalf("Didn't find template definition in %s", ti.inputFile)
-	}
-	if len(ti.templateArgs) != len(ti.Args) {
-		fatalf("Wrong number of arguments - template is expecting %d but %d supplied", len(ti.Args), len(ti.templateArgs))
-	}
-	debugf("templateName = %v, templateArgs = %v", ti.templateName, ti.templateArgs)
-}
-
-// Parses the template file
-func (ti *templateInstantiation) parse(inputFile string) {
-	ti.inputFile = inputFile
-	// Make the name mappings
-	ti.newIsPublic = ast.IsExported(ti.Name)
-
-	fset, f := parseFile(inputFile)
-	ti.findTemplateDefinition(f)
-
-	// debugf("Decls = %#v", f.Decls)
-	// Find names which need to be adjusted
-	namesToMangle := []string{}
-	newDecls := []ast.Decl{}
-	for _, Decl := range f.Decls {
-		remove := false
-		switch d := Decl.(type) {
-		case *ast.GenDecl:
-			// A general definition
-			switch d.Tok {
-			case token.IMPORT:
-				// Ignore imports
-			case token.CONST, token.VAR:
-				if len(d.Specs) != 1 {
-					log.Fatal("Unexpected specs on CONST/VAR")
-				}
-				v := d.Specs[0].(*ast.ValueSpec)
-				for _, name := range v.Names {
-					debugf("VAR or CONST %v", name.Name)
-					namesToMangle = append(namesToMangle, name.Name)
-				}
-			case token.TYPE:
-				if len(d.Specs) != 1 {
-					log.Fatal("Unexpected specs on TYPE")
-				}
-				t := d.Specs[0].(*ast.TypeSpec)
-				debugf("Type %v", t.Name.Name)
-				namesToMangle = append(namesToMangle, t.Name.Name)
-				// Remove type A if it is a template definition
-				remove = containsString(t.Name.Name, ti.templateArgs)
-			default:
-				logf("Unknown type %s", d.Tok)
-			}
-			debugf("GenDecl = %#v", d)
-		case *ast.FuncDecl:
-			// A function definition
-			if d.Recv != nil {
-				// No receiver == method - ignore this function
-			} else {
-				//debugf("FuncDecl = %#v", d)
-				debugf("FuncDecl = %s", d.Name.Name)
-				namesToMangle = append(namesToMangle, d.Name.Name)
-				// Remove func A() if it is a template definition
-				remove = containsString(d.Name.Name, ti.templateArgs)
-			}
-		default:
-			fatalf("Unknown Decl %#v", Decl)
-		}
-		if !remove {
-			newDecls = append(newDecls, Decl)
-		}
-	}
-	debugf("Names to mangle = %#v", namesToMangle)
-
-	// Remove the stub type definitions "type A int" from the package
-	f.Decls = newDecls
-
-	// Map the type definitions A -> string, B -> int
-	for i := range ti.Args {
-		ti.mappings[ti.templateArgs[i]] = ti.Args[i]
-	}
-
-	found := false
-	for _, name := range namesToMangle {
-		if name == ti.templateName {
-			found = true
-			ti.addMapping(name)
-		} else if _, found := ti.mappings[name]; !found {
-			ti.addMapping(name)
-		}
-
-	}
-	if !found {
-		fatalf("No definition for template type '%s'", ti.templateName)
-	}
-	debugf("mappings = %#v", ti.mappings)
-
-	// Replace the identifiers
-	for name, replacement := range ti.mappings {
-		replaceIdentifier(f, name, replacement)
-	}
-
-	// Change the package to the local package name
-	f.Name.Name = ti.NewPackage
-
-	// Output
-	outputFileName := "gotemplate_" + ti.Name + ".go"
-	outputFile(fset, f, outputFileName)
-	logf("Written '%s'", outputFileName)
-}
-
-// Instantiate the template package
-func (ti *templateInstantiation) instantiate() {
-	p, err := build.Default.Import(ti.Package, ti.Dir, build.ImportMode(0))
-	if err != nil {
-		fatalf("Import %s failed: %s", ti.Package, err)
-	}
-	//debugf("package = %#v", p)
-	debugf("Dir = %#v", p.Dir)
-	// FIXME CgoFiles ?
-	debugf("Go files = %#v", p.GoFiles)
-
-	if len(p.GoFiles) == 0 {
-		fatalf("No go files found for package '%s'", ti.Package)
-	}
-	// FIXME
-	if len(p.GoFiles) != 1 {
-		fatalf("Found more than one go file in '%s' - can only cope with 1 for the moment, sorry", ti.Package)
-	}
-
-	templateFilePath := path.Join(p.Dir, p.GoFiles[0])
-	ti.parse(templateFilePath)
-}
-
 // usage prints the syntax and exists
 func usage() {
 	BaseName := path.Base(os.Args[0])
@@ -356,16 +66,6 @@ func usage() {
 	os.Exit(1)
 }
 
-// findPackageName reads all the go packages in the curent directory
-// and finds which package they are in
-func findPackageName() string {
-	p, err := build.Default.Import(".", ".", build.ImportMode(0))
-	if err != nil {
-		fatalf("Faile to read packages in current directory: %v", err)
-	}
-	return p.Name
-}
-
 func main() {
 	flag.Usage = usage
 	flag.Parse()
@@ -373,24 +73,12 @@ func main() {
 	if len(args) != 2 {
 		fatalf("Need 2 arguments, package and parameters")
 	}
-	pkg := args[0]
-	name, templateArgs := parseTemplateAndArgs(args[1])
-
-	currentPackageName := findPackageName()
 
 	cwd, err := os.Getwd()
 	if err != nil {
-		log.Fatalf("Couldn't get wd: %v", err)
+		fatalf("Couldn't get wd: %v", err)
 	}
-	ti := &templateInstantiation{
-		Package:    pkg,
-		Name:       name,
-		Args:       templateArgs,
-		NewPackage: currentPackageName,
-		Dir:        cwd,
-	}
-	ti.init()
-	logf("%s: substituting %q with %s(%s) into package %s", os.Args[0], ti.Package, ti.Name, strings.Join(ti.Args, ","), ti.NewPackage)
 
-	ti.instantiate()
+	t := newTemplate(cwd, args[0], args[1])
+	t.instantiate()
 }
