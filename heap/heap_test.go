@@ -9,60 +9,38 @@ import (
 	"testing"
 )
 
-type myHeap []int
-
-func (h *myHeap) Less(i, j int) bool {
-	return (*h)[i] < (*h)[j]
-}
-
-func (h *myHeap) Swap(i, j int) {
-	(*h)[i], (*h)[j] = (*h)[j], (*h)[i]
-}
-
-func (h *myHeap) Len() int {
-	return len(*h)
-}
-
-func (h *myHeap) Pop() (v interface{}) {
-	*h, v = (*h)[:h.Len()-1], (*h)[h.Len()-1]
-	return
-}
-
-func (h *myHeap) Push(v interface{}) {
-	*h = append(*h, v.(int))
-}
-
-func (h myHeap) verify(t *testing.T, i int) {
-	n := h.Len()
+func verify(t *testing.T, h *Heap, i int) {
+	hs := *h
+	n := len(hs)
 	j1 := 2*i + 1
 	j2 := 2*i + 2
 	if j1 < n {
-		if h.Less(j1, i) {
-			t.Errorf("heap invariant invalidated [%d] = %d > [%d] = %d", i, h[i], j1, h[j1])
+		if hs[j1] < hs[i] {
+			t.Errorf("heap invariant invalidated [%d] = %d > [%d] = %d", i, hs[i], j1, hs[j1])
 			return
 		}
-		h.verify(t, j1)
+		verify(t, h, j1)
 	}
 	if j2 < n {
-		if h.Less(j2, i) {
-			t.Errorf("heap invariant invalidated [%d] = %d > [%d] = %d", i, h[i], j1, h[j2])
+		if hs[j2] < hs[i] {
+			t.Errorf("heap invariant invalidated [%d] = %d > [%d] = %d", i, hs[i], j1, hs[j2])
 			return
 		}
-		h.verify(t, j2)
+		verify(t, h, j2)
 	}
 }
 
 func TestInit0(t *testing.T) {
-	h := new(myHeap)
+	h := new(Heap)
 	for i := 20; i > 0; i-- {
 		h.Push(0) // all elements are the same
 	}
-	Init(h)
-	h.verify(t, 0)
+	h.Init()
+	verify(t, h, 0)
 
-	for i := 1; h.Len() > 0; i++ {
-		x := Pop(h).(int)
-		h.verify(t, 0)
+	for i := 1; len(*h) > 0; i++ {
+		x := h.Pop()
+		verify(t, h, 0)
 		if x != 0 {
 			t.Errorf("%d.th pop got %d; want %d", i, x, 0)
 		}
@@ -70,95 +48,95 @@ func TestInit0(t *testing.T) {
 }
 
 func TestInit1(t *testing.T) {
-	h := new(myHeap)
+	h := new(Heap)
 	for i := 20; i > 0; i-- {
-		h.Push(i) // all elements are different
+		h.Push(A(i)) // all elements are different
 	}
-	Init(h)
-	h.verify(t, 0)
+	h.Init()
+	verify(t, h, 0)
 
-	for i := 1; h.Len() > 0; i++ {
-		x := Pop(h).(int)
-		h.verify(t, 0)
-		if x != i {
+	for i := 1; len(*h) > 0; i++ {
+		x := h.Pop()
+		verify(t, h, 0)
+		if int(x) != i {
 			t.Errorf("%d.th pop got %d; want %d", i, x, i)
 		}
 	}
 }
 
 func Test(t *testing.T) {
-	h := new(myHeap)
-	h.verify(t, 0)
+	h := new(Heap)
+	verify(t, h, 0)
 
 	for i := 20; i > 10; i-- {
-		h.Push(i)
+		h.Push(A(i))
 	}
-	Init(h)
-	h.verify(t, 0)
+	h.Init()
+	verify(t, h, 0)
 
 	for i := 10; i > 0; i-- {
-		Push(h, i)
-		h.verify(t, 0)
+		h.Push(A(i))
+		verify(t, h, 0)
 	}
 
-	for i := 1; h.Len() > 0; i++ {
-		x := Pop(h).(int)
+	for i := 1; len(*h) > 0; i++ {
+		x := h.Pop()
 		if i < 20 {
-			Push(h, 20+i)
+			h.Push(A(20 + i))
 		}
-		h.verify(t, 0)
-		if x != i {
+		verify(t, h, 0)
+		if int(x) != i {
 			t.Errorf("%d.th pop got %d; want %d", i, x, i)
 		}
 	}
 }
 
 func TestRemove0(t *testing.T) {
-	h := new(myHeap)
+	h := new(Heap)
 	for i := 0; i < 10; i++ {
-		h.Push(i)
+		h.Push(A(i))
 	}
-	h.verify(t, 0)
+	verify(t, h, 0)
 
-	for h.Len() > 0 {
-		i := h.Len() - 1
-		x := Remove(h, i).(int)
-		if x != i {
+	for len(*h) > 0 {
+		i := len(*h) - 1
+		x := h.Remove(i)
+		if int(x) != i {
 			t.Errorf("Remove(%d) got %d; want %d", i, x, i)
 		}
-		h.verify(t, 0)
+		verify(t, h, 0)
 	}
 }
 
 func TestRemove1(t *testing.T) {
-	h := new(myHeap)
+	h := new(Heap)
 	for i := 0; i < 10; i++ {
-		h.Push(i)
+		h.Push(A(i))
 	}
-	h.verify(t, 0)
+	verify(t, h, 0)
 
-	for i := 0; h.Len() > 0; i++ {
-		x := Remove(h, 0).(int)
-		if x != i {
+	for i := 0; len(*h) > 0; i++ {
+		x := h.Remove(0)
+		if int(x) != i {
 			t.Errorf("Remove(0) got %d; want %d", x, i)
 		}
-		h.verify(t, 0)
+		verify(t, h, 0)
 	}
 }
 
 func TestRemove2(t *testing.T) {
 	N := 10
 
-	h := new(myHeap)
+	h := new(Heap)
 	for i := 0; i < N; i++ {
-		h.Push(i)
+		h.Push(A(i))
 	}
-	h.verify(t, 0)
+	verify(t, h, 0)
 
 	m := make(map[int]bool)
-	for h.Len() > 0 {
-		m[Remove(h, (h.Len()-1)/2).(int)] = true
-		h.verify(t, 0)
+	for len(*h) > 0 {
+		m[int(h.Remove((len(*h)-1)/2))] = true
+		verify(t, h, 0)
 	}
 
 	if len(m) != N {
@@ -173,41 +151,38 @@ func TestRemove2(t *testing.T) {
 
 func BenchmarkDup(b *testing.B) {
 	const n = 10000
-	h := make(myHeap, n)
+	h := make(Heap, n)
 	for i := 0; i < b.N; i++ {
 		for j := 0; j < n; j++ {
-			Push(&h, 0) // all elements are the same
-		}
-		for h.Len() > 0 {
-			Pop(&h)
+			h.Push(0) // all elements are the same
 		}
 	}
 }
 
 func TestFix(t *testing.T) {
-	h := new(myHeap)
-	h.verify(t, 0)
+	h := new(Heap)
+	verify(t, h, 0)
 
 	for i := 200; i > 0; i -= 10 {
-		Push(h, i)
+		h.Push(A(i))
 	}
-	h.verify(t, 0)
+	verify(t, h, 0)
 
 	if (*h)[0] != 10 {
 		t.Fatalf("Expected head to be 10, was %d", (*h)[0])
 	}
 	(*h)[0] = 210
-	Fix(h, 0)
-	h.verify(t, 0)
+	h.Fix(0)
+	verify(t, h, 0)
 
 	for i := 100; i > 0; i-- {
-		elem := rand.Intn(h.Len())
+		elem := rand.Intn(len(*h))
 		if i&1 == 0 {
 			(*h)[elem] *= 2
 		} else {
 			(*h)[elem] /= 2
 		}
-		Fix(h, elem)
-		h.verify(t, 0)
+		h.Fix(elem)
+		verify(t, h, 0)
 	}
 }
