@@ -6,6 +6,8 @@ This tool manages package based templates for the Go language using
 
 [Design docs for go generate](https://docs.google.com/document/d/1V03LUfjSADDooDMhe-_K59EgpTEm3V8uvQRuNMAEnjg/edit?pli=1)
 
+[![Build Status](https://travis-ci.org/ncw/gotemplate.png)](https://travis-ci.org/ncw/gotemplate)
+
 Install
 -------
 
