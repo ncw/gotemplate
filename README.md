@@ -56,7 +56,7 @@ instantiation then any external functions will be public.  Eg
 Would give you `MySet`, `NewMySet` and `NewSizedMySet` instead.
 
 You can use multiple templates and you can use the same template with
-different paramters.  In that case you must give it a different name,
+different parameters.  In that case you must give it a different name,
 eg
 
     //go:generate gotemplate "github.com/ncw/gotemplate/set" StringSet(string)
@@ -76,7 +76,7 @@ is instantiated more than once.
 Any identifiers with the template name in (eg `Set`) will have the
 template name (eg `Set`) part substituted.
 
-Any identifiers without the template name in will just be postfixed
+Any identifiers without the template name in will just be post-fixed
 with the template name.
 
 So if this was run
@@ -124,7 +124,7 @@ Source control for templates
 
 It is expected that the generated files will be checked into version
 control, and users of your code will just run `go get` to fetch it.
-`go generate` will only be run by delopers of the package.
+`go generate` will only be run by developers of the package.
 
 Writing templates
 -----------------
