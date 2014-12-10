@@ -42,7 +42,7 @@ var (
 var logf = log.Printf
 
 // Log then fatal error
-func fatalf(format string, args ...interface{}) {
+var fatalf = func(format string, args ...interface{}) {
 	logf(format, args...)
 	os.Exit(1)
 }
