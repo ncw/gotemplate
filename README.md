@@ -38,8 +38,9 @@ name `mySet`.
 
 Now run `go generate` in your code directory with no arguments.  This
 will instantiate the template into a file called `gotemplate_mySet.go`
-which will provide a `mySet` type and `newmySet` and `newSizesmySet`
-functions to make them.
+which will provide a `mySet` type and `newMySet` and `newSizesMySet`
+functions to make them. Note that the first letter of your custom name 
+is still capitalized when it is not at the beginning of the new name.
 
     $ go generate
     substituting "github.com/ncw/gotemplate/set" with mySet(string) into package main
@@ -74,7 +75,10 @@ instantiated.  This is to ensure that they are unique if the template
 is instantiated more than once.
 
 Any identifiers with the template name in (eg `Set`) will have the
-template name (eg `Set`) part substituted.
+template name (eg `Set`) part substituted. If the template name does
+not begin the identifier, Go's casing style is respected and the 
+first letter of your new identifier is capitalized. (eg 'newMySet'
+instead of 'newmySet').
 
 Any identifiers without the template name in will just be post-fixed
 with the template name.
@@ -99,9 +103,9 @@ capitals turned into lower case.  So if this was run
 This would substitute
 
   * `Set` to `mySet`
-  * `NewSet` to `newmySet`
-  * `NewSizedSet` to `newSizedmySet`
-  * `utilityFunc` to `utilityFuncmySet`
+  * `NewSet` to `newMySet`
+  * `NewSizedSet` to `newSizedMySet`
+  * `utilityFunc` to `utilityFuncMySet`
 
 Installing templates
 --------------------

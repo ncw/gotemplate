@@ -78,9 +78,9 @@ var AVar int
 
 func min(a float64) float64    { return float64(0) }
 func minone(a float64) float64 { return float64(1) }
-func aFuncmin()                {}
+func aFuncMin()                {}
 
-var aVarmin int
+var aVarMin int
 `,
 	},
 	{
