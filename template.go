@@ -57,10 +57,17 @@ func (t *template) addMapping(name string) {
 	replacementName := ""
 	if !strings.Contains(name, t.templateName) {
 		// If name doesn't contain template name then just prefix it
-		replacementName = name + t.Name
+		innerName := strings.ToUpper(t.Name[:1]) + t.Name[1:]
+		replacementName = name + innerName
 		debugf("Top level definition '%s' doesn't contain template name '%s', using '%s'", name, t.templateName, replacementName)
 	} else {
-		replacementName = strings.Replace(name, t.templateName, t.Name, 1)
+		// make sure the new identifier will follow
+		// Go casing style (newMySet not newmySet).
+		innerName := t.Name
+		if strings.Index(name, t.templateName) != 0 {
+			innerName = strings.ToUpper(innerName[:1]) + innerName[1:]
+		}
+		replacementName = strings.Replace(name, t.templateName, innerName, 1)
 	}
 	// If new template name is not public then make sure
 	// the exported name is not public too
