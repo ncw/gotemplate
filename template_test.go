@@ -22,65 +22,73 @@ type TestTemplate struct {
 	out     string
 }
 
-var tests = []TestTemplate{
-	{
-		title: "Simple test public",
-		args:  "Min(int)",
-		pkg:   "main",
-		in: `package tt
+const basicTest = `package tt
 
 import "fmt"
 
-// template type TT(A)
+// template type Set(A)
 type A int
 
-func TT(a A) A { return A(0) }
-func TTone(a A) A { return A(1) }
-func AFunc() {}
+type Set struct { a A }
+func NewSet(a A) A { return A(0) }
+func NewSizedSet(a A) A { return A(1) }
+func UtilityFunc1() {}
+func utilityFunc() {}
 func (a A) f0() {}
 func (a *A) F1() {}
-var AVar int
-`,
-		outName: "gotemplate_Min.go",
+var AVar1 int
+var aVar2 int
+`
+
+var tests = []TestTemplate{
+	{
+		title:   "Simple test public",
+		args:    "MySet(int)",
+		pkg:     "main",
+		in:      basicTest,
+		outName: "gotemplate_MySet.go",
 		out: `package main
 
 import "fmt"
 
-// template type TT(A)
+// template type Set(A)
 
-func Min(a int) int    { return int(0) }
-func Minone(a int) int { return int(1) }
-func AFuncMin()        {}
-func (a int) f0()      {}
-func (a *int) F1()     {}
+type MySet struct{ a int }
 
-var AVarMin int
+func NewMySet(a int) int      { return int(0) }
+func NewSizedMySet(a int) int { return int(1) }
+func UtilityFunc1MySet()      {}
+func utilityFuncMySet()       {}
+func (a int) f0()             {}
+func (a *int) F1()            {}
+
+var AVar1MySet int
+var aVar2MySet int
 `,
 	},
 	{
-		title: "Simple test private",
-		args:  "min(float64)",
-		pkg:   "main",
-		in: `package tt
-
-// template type TT(A)
-type A int
-
-func TT(a A) A { return A(0) }
-func TTone(a A) A { return A(1) }
-func AFunc() {}
-var AVar int
-`,
-		outName: "gotemplate_min.go",
+		title:   "Simple test private",
+		args:    "mySet(float64)",
+		pkg:     "main",
+		in:      basicTest,
+		outName: "gotemplate_mySet.go",
 		out: `package main
 
-// template type TT(A)
+import "fmt"
 
-func min(a float64) float64    { return float64(0) }
-func minone(a float64) float64 { return float64(1) }
-func aFuncMin()                {}
+// template type Set(A)
 
-var aVarMin int
+type mySet struct{ a float64 }
+
+func newMySet(a float64) float64      { return float64(0) }
+func newSizedMySet(a float64) float64 { return float64(1) }
+func utilityFunc1MySet()              {}
+func utilityFuncMySet()               {}
+func (a float64) f0()                 {}
+func (a *float64) F1()                {}
+
+var aVar1MySet int
+var aVar2MySet int
 `,
 	},
 	{
@@ -219,6 +227,9 @@ Expected
 }
 
 func TestSub(t *testing.T) {
+	fatalf = func(format string, args ...interface{}) {
+		t.Fatalf(format, args...)
+	}
 	for i := range tests {
 		t.Logf("Test[%d] %q", i, tests[i].title)
 		testTemplate(t, &tests[i])

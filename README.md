@@ -169,6 +169,18 @@ comparable.  If you try this you'll get a compile error for example.
 Only one .go file is used when reading template definitions at the
 moment (programmer laziness - will fix at some point!)
 
+Changelog
+---------
+
+  * v0.01 - 2014-12-10
+    * Change renaming rules to make better Go names.  This only affects private exports, eg for `mySet` in the example above,
+      * `NewSet` becomes `newMySet` (was `newmySet`)
+      * `NewSizedSet` becomes `newSizedMySet` (was `newSizedmySet`)
+      * `utilityFunc` becomes `utilityFuncMySet` (`utilityFuncmySet`)
+    * This is a backwards incompatible change
+  * v0.00 - 2014-10-05
+    * First public release
+
 Ideas for the future
 --------------------
 
@@ -215,4 +227,4 @@ Authors
 Contributors
 ------------
 
-  * Your name goes here!
+  * Patrick Oyarzun <patrickoyarzun@gmail.com>
