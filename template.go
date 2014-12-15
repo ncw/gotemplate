@@ -210,13 +210,12 @@ func (t *template) parse(inputFile string) {
 			case token.IMPORT:
 				// Ignore imports
 			case token.CONST, token.VAR:
-				if len(d.Specs) != 1 {
-					fatalf("Unexpected specs on CONST/VAR")
-				}
-				v := d.Specs[0].(*ast.ValueSpec)
-				for _, name := range v.Names {
-					debugf("VAR or CONST %v", name.Name)
-					namesToMangle = append(namesToMangle, name.Name)
+				for _, spec := range d.Specs {
+					v := spec.(*ast.ValueSpec)
+					for _, name := range v.Names {
+						debugf("VAR or CONST %v", name.Name)
+						namesToMangle = append(namesToMangle, name.Name)
+					}
 				}
 			case token.TYPE:
 				if len(d.Specs) != 1 {
