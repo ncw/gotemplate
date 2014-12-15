@@ -38,6 +38,10 @@ func (a A) f0() {}
 func (a *A) F1() {}
 var AVar1 int
 var aVar2 int
+var (
+	AVar3 int
+	aVar4 int
+)
 `
 
 var tests = []TestTemplate{
@@ -64,6 +68,10 @@ func (a *int) F1()            {}
 
 var AVar1MySet int
 var aVar2MySet int
+var (
+	AVar3MySet int
+	aVar4MySet int
+)
 `,
 	},
 	{
@@ -89,6 +97,10 @@ func (a *float64) F1()                {}
 
 var aVar1MySet int
 var aVar2MySet int
+var (
+	aVar3MySet int
+	aVar4MySet int
+)
 `,
 	},
 	{
