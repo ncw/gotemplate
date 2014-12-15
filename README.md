@@ -172,6 +172,8 @@ moment (programmer laziness - will fix at some point!)
 Changelog
 ---------
 
+  * v0.02 - 2014-12-15
+    * Fixed multi-line const/var declarations bug
   * v0.01 - 2014-12-10
     * Change renaming rules to make better Go names.  This only affects private exports, eg for `mySet` in the example above,
       * `NewSet` becomes `newMySet` (was `newmySet`)
