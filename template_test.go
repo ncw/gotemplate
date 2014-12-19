@@ -133,6 +133,81 @@ func Minone(a int8) int8 {
 }
 `,
 	},
+	{
+		title: "Simple Test constants",
+		args:  "Vector2(float32, 2)",
+		pkg:   "main",
+		in: `package tt
+
+// template type Vector(A, n)
+type A float32
+const n = 3
+
+type Vector [n]A
+
+func (v Vector) Add(b Vector) {
+	for i := range v {
+		v += b[i]
+	}
+}
+`,
+		outName: "gotemplate_Vector2.go",
+		out: `package main
+
+// template type Vector(A, n)
+
+type Vector2 [2]float32
+
+func (v Vector2) Add(b Vector2) {
+	for i := range v {
+		v += b[i]
+	}
+}
+`,
+	},
+	{
+		title: "Test constants",
+		args:  "Matrix22(float32, 2, 2)",
+		pkg:   "main",
+		in: `package mat
+
+// template type Matrix(A, n, m)
+type A float32
+
+const (
+	n, a, b, m = 1, 2, 3, 1
+)
+
+type Matrix [n][m]A
+
+func (mat Matrix) Add(x Matrix) {
+	for i := range mat {
+		for j := range mat[i] {
+			mat[i][j] += x[i][j]
+		}
+	}
+}
+`,
+		outName: "gotemplate_Matrix22.go",
+		out: `package main
+
+// template type Matrix(A, n, m)
+
+const (
+	aMatrix22, bMatrix22 = 2, 3
+)
+
+type Matrix22 [2][2]float32
+
+func (mat Matrix22) Add(x Matrix22) {
+	for i := range mat {
+		for j := range mat[i] {
+			mat[i][j] += x[i][j]
+		}
+	}
+}
+`,
+	},
 }
 
 func testTemplate(t *testing.T, test *TestTemplate) {
