@@ -210,13 +210,36 @@ func (t *template) parse(inputFile string) {
 			case token.IMPORT:
 				// Ignore imports
 			case token.CONST, token.VAR:
-				for _, spec := range d.Specs {
+				// Find and remove identifiers found in template
+				// params
+				emptySpecs := []int{}
+				for i, spec := range d.Specs {
+					namesToRemove := []int{}
 					v := spec.(*ast.ValueSpec)
-					for _, name := range v.Names {
+					for j, name := range v.Names {
 						debugf("VAR or CONST %v", name.Name)
 						namesToMangle = append(namesToMangle, name.Name)
+						if containsString(name.Name, t.templateArgs) {
+							namesToRemove = append(namesToRemove, j)
+						}
+					}
+					// Shuffle the names to remove out of v.Names and v.Values
+					for i := len(namesToRemove) - 1; i >= 0; i-- {
+						p := namesToRemove[i]
+						v.Names = append(v.Names[:p], v.Names[p+1:]...)
+						v.Values = append(v.Values[:p], v.Values[p+1:]...)
+					}
+					// If empty then add to slice to remove later
+					if len(v.Names) == 0 {
+						emptySpecs = append(emptySpecs, i)
 					}
 				}
+				// Remove now-empty specs
+				for i := len(emptySpecs) - 1; i >= 0; i-- {
+					p := emptySpecs[i]
+					d.Specs = append(d.Specs[:p], d.Specs[p+1:]...)
+				}
+				remove = len(d.Specs) == 0
 			case token.TYPE:
 				if len(d.Specs) != 1 {
 					fatalf("Unexpected specs on TYPE")

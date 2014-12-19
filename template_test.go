@@ -133,6 +133,142 @@ func Minone(a int8) int8 {
 }
 `,
 	},
+	{
+		title: "Simple Test constants",
+		args:  "Vector2(float32, 2)",
+		pkg:   "main",
+		in: `package tt
+
+// template type Vector(A, n)
+type A float32
+const n = 3
+
+type Vector [n]A
+
+func (v Vector) Add(b Vector) {
+	for i := range v {
+		v += b[i]
+	}
+}
+`,
+		outName: "gotemplate_Vector2.go",
+		out: `package main
+
+// template type Vector(A, n)
+
+type Vector2 [2]float32
+
+func (v Vector2) Add(b Vector2) {
+	for i := range v {
+		v += b[i]
+	}
+}
+`,
+	},
+	{
+		title: "Test constants",
+		args:  "Matrix22(float32, 2, 2)",
+		pkg:   "main",
+		in: `package mat
+
+// template type Matrix(A, n, m)
+type A float32
+
+const (
+	n, a, b, m = 1, 2, 3, 1
+)
+
+type Matrix [n][m]A
+
+func (mat Matrix) Add(x Matrix) {
+	for i := range mat {
+		for j := range mat[i] {
+			mat[i][j] += x[i][j]
+		}
+	}
+}
+`,
+		outName: "gotemplate_Matrix22.go",
+		out: `package main
+
+// template type Matrix(A, n, m)
+
+const (
+	aMatrix22, bMatrix22 = 2, 3
+)
+
+type Matrix22 [2][2]float32
+
+func (mat Matrix22) Add(x Matrix22) {
+	for i := range mat {
+		for j := range mat[i] {
+			mat[i][j] += x[i][j]
+		}
+	}
+}
+`,
+	},
+	{
+		title: "Test vars",
+		args:  "ProgXX(xx1, xx2, xx3, xx4, xx5, xx6)",
+		pkg:   "main",
+		in: `package prog
+
+// template type Prog(a, b, c, d, e, f)
+type A float32
+
+var (
+	a, z = 1, 2
+	b, n, m, c = 3, 4, 5, 6
+	d = 7
+)
+
+var (
+	o = 8
+	e = 8
+)
+
+var (
+	e = 8
+)
+
+var (
+	oo = 9
+	e = 10
+)
+
+var (
+	p, f, q = 11, 12, 13
+)
+
+func Prog() int {return a+b+c+d+e+f}
+`,
+		outName: "gotemplate_ProgXX.go",
+		out: `package main
+
+// template type Prog(a, b, c, d, e, f)
+type AProgXX float32
+
+var (
+	zProgXX          = 2
+	nProgXX, mProgXX = 4, 5
+)
+
+var (
+	oProgXX = 8
+)
+
+var (
+	ooProgXX = 9
+)
+
+var (
+	pProgXX, qProgXX = 11, 13
+)
+
+func ProgXX() int { return xx1 + xx2 + xx3 + xx4 + xx5 + xx6 }
+`,
+	},
 }
 
 func testTemplate(t *testing.T, test *TestTemplate) {
