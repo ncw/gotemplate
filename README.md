@@ -138,19 +138,33 @@ and be usable as-is.  Because they are packages, if you aren't writing
 a public template you should put them in a subdirectory of your
 project most likely.
 
-To make a Go package a template it should have a type definition and a
-special comment signaling to `gotemplate` what the type is called and
-what its type parameters are.
+To make a Go package a template it should have one or more declarations
+and a special comment signaling to `gotemplate` what the template is 
+called and what its parameters are. Currently, supported parameterized
+declarations are type, const, and func.  
 
 Here is an example from the set package.
 
     // template type Set(A)
     type A int
 
-This indicates that the type is called `Set` and it has 1 type
+This indicates that the template is called `Set` and it has 1 type
 parameter `A`.  When you are writing the template package make sure
 you use `A` instead of `int` where you want it to be substituted with
 a new type when the template is instantiated.
+
+Similarly, you could write a package with a const parameter.
+
+    // template type Vector(A, n)
+    type A int
+    const n = 2
+
+    type Vector[n]A
+
+This indicates that the template is called `Vector` and it has 1 type 
+parameter `A` and one constant parameter `n`. Again, all uses of `n` 
+in the template code will be replaced by a literal value when the template
+is instantiated.
 
 All the definitions of the template parameters will be removed from
 the instantiated template.
