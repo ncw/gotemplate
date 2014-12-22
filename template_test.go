@@ -269,6 +269,71 @@ var (
 func ProgXX() int { return xx1 + xx2 + xx3 + xx4 + xx5 + xx6 }
 `,
 	},
+	{
+		title: "Test complex type decls",
+		args:  "tmpl(int, string, map[string]map[string]chan int, float32, rune, chan []string)",
+		pkg:   "main",
+		in: `package tt
+
+// template type TMPL(A, B, C, D, E, F)
+type A int
+
+type TMPL struct {
+	a A
+	b B
+	c C
+	d D
+	e E
+	f F
+}
+
+type ImportantType bool
+
+type (
+	ImportantType1 int
+	B struct {
+		v map[int][][][]rune
+	}
+	importantType2 map[int]int
+	C chan struct {
+		x []string
+	}
+)
+
+type (
+	D rune
+	importantType3 struct{}
+	E string
+	F map[string]int
+)
+`,
+		outName: "gotemplate_tmpl.go",
+		out: `package main
+
+// template type TMPL(A, B, C, D, E, F)
+
+type tmpl struct {
+	a int
+	b string
+	c map[string]map[string]chan int
+	d float32
+	e rune
+	f chan []string
+}
+
+type importantTypeTmpl bool
+
+type (
+	importantType1Tmpl int
+
+	importantType2Tmpl map[int]int
+)
+
+type (
+	importantType3Tmpl struct{}
+)
+`,
+	},
 }
 
 func testTemplate(t *testing.T, test *TestTemplate) {

@@ -241,14 +241,21 @@ func (t *template) parse(inputFile string) {
 				}
 				remove = len(d.Specs) == 0
 			case token.TYPE:
-				if len(d.Specs) != 1 {
-					fatalf("Unexpected specs on TYPE")
+				namesToRemove := []int{}
+				for i, spec := range d.Specs {
+					typeSpec := spec.(*ast.TypeSpec)
+					debugf("Type %v", typeSpec.Name.Name)
+					namesToMangle = append(namesToMangle, typeSpec.Name.Name)
+					// Remove type A if it is a template definition
+					if t.isTemplateArgument(typeSpec.Name.Name) {
+						namesToRemove = append(namesToRemove, i)
+					}
 				}
-				typeSpec := d.Specs[0].(*ast.TypeSpec)
-				debugf("Type %v", typeSpec.Name.Name)
-				namesToMangle = append(namesToMangle, typeSpec.Name.Name)
-				// Remove type A if it is a template definition
-				remove = t.isTemplateArgument(typeSpec.Name.Name)
+				for i := len(namesToRemove) - 1; i >= 0; i-- {
+					p := namesToRemove[i]
+					d.Specs = append(d.Specs[:p], d.Specs[p+1:]...)
+				}
+				remove = len(d.Specs) == 0
 			default:
 				logf("Unknown type %s", d.Tok)
 			}
