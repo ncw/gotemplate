@@ -4,8 +4,6 @@ Go templates
 This tool manages package based templates for the Go language using
 "go generate" which requires go 1.4.
 
-[Design docs for go generate](https://docs.google.com/document/d/1V03LUfjSADDooDMhe-_K59EgpTEm3V8uvQRuNMAEnjg/edit?pli=1)
-
 [![Build Status](https://travis-ci.org/ncw/gotemplate.png)](https://travis-ci.org/ncw/gotemplate)
 
 Install
@@ -38,7 +36,7 @@ name `mySet`.
 
 Now run `go generate` in your code directory with no arguments.  This
 will instantiate the template into a file called `gotemplate_mySet.go`
-which will provide a `mySet` type and `newMySet` and `newSizesMySet`
+which will provide a `mySet` type and `newMySet` and `newSizedMySet`
 functions to make them. Note that the first letter of your custom name 
 is still capitalized when it is not at the beginning of the new name.
 
@@ -186,6 +184,8 @@ moment (programmer laziness - will fix at some point!)
 Changelog
 ---------
 
+  * v0.03 - 2014-12-22
+    * Allow const and var to be substituted as template parameters
   * v0.02 - 2014-12-15
     * Fixed multi-line const/var declarations bug
   * v0.01 - 2014-12-10
