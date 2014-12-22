@@ -161,16 +161,6 @@ func parseFile(path string) (*token.FileSet, *ast.File) {
 	return fset, f
 }
 
-// Returns true if haystack contains needle
-func containsString(needle string, haystack []string) bool {
-	for _, item := range haystack {
-		if item == needle {
-			return true
-		}
-	}
-	return false
-}
-
 // Replace the identifers in f
 func replaceIdentifier(f *ast.File, old, new string) {
 	// Inspect the AST and print all identifiers and literals.
@@ -186,6 +176,16 @@ func replaceIdentifier(f *ast.File, old, new string) {
 		}
 		return true
 	})
+}
+
+// Return true if name is a template argument
+func (t *template) isTemplateArgument(name string) bool {
+	for _, item := range t.templateArgs {
+		if item == name {
+			return true
+		}
+	}
+	return false
 }
 
 // Parses the template file
@@ -219,7 +219,7 @@ func (t *template) parse(inputFile string) {
 					for j, name := range v.Names {
 						debugf("VAR or CONST %v", name.Name)
 						namesToMangle = append(namesToMangle, name.Name)
-						if containsString(name.Name, t.templateArgs) {
+						if t.isTemplateArgument(name.Name) {
 							namesToRemove = append(namesToRemove, j)
 						}
 					}
@@ -248,7 +248,7 @@ func (t *template) parse(inputFile string) {
 				debugf("Type %v", typeSpec.Name.Name)
 				namesToMangle = append(namesToMangle, typeSpec.Name.Name)
 				// Remove type A if it is a template definition
-				remove = containsString(typeSpec.Name.Name, t.templateArgs)
+				remove = t.isTemplateArgument(typeSpec.Name.Name)
 			default:
 				logf("Unknown type %s", d.Tok)
 			}
@@ -256,13 +256,13 @@ func (t *template) parse(inputFile string) {
 		case *ast.FuncDecl:
 			// A function definition
 			if d.Recv != nil {
-				// No receiver == method - ignore this function
+				// Has receiver so is a method - ignore this function
 			} else {
 				//debugf("FuncDecl = %#v", d)
 				debugf("FuncDecl = %s", d.Name.Name)
 				namesToMangle = append(namesToMangle, d.Name.Name)
 				// Remove func A() if it is a template definition
-				remove = containsString(d.Name.Name, t.templateArgs)
+				remove = t.isTemplateArgument(d.Name.Name)
 			}
 		default:
 			fatalf("Unknown Decl %#v", Decl)
