@@ -19,12 +19,12 @@ import (
 type template struct {
 	Package      string
 	Name         string
-	Args         []string
+	Args         []ast.Expr
 	NewPackage   string
 	Dir          string
 	templateName string
-	templateArgs []string
-	mappings     map[string]string
+	templateArgs []*ast.Ident
+	mappings     map[*ast.Ident]ast.Expr
 	newIsPublic  bool
 	inputFile    string
 }
@@ -47,38 +47,38 @@ func newTemplate(dir, pkg, templateArgsString string) *template {
 		Name:       name,
 		Args:       templateArgs,
 		Dir:        dir,
-		mappings:   make(map[string]string),
+		mappings:   make(map[*ast.Ident]ast.Expr),
 		NewPackage: findPackageName(),
 	}
 }
 
 // Add a mapping for identifier
-func (t *template) addMapping(name string) {
+func (t *template) addMapping(name *ast.Ident) {
 	replacementName := ""
-	if !strings.Contains(name, t.templateName) {
+	if !strings.Contains(name.Name, t.templateName) {
 		// If name doesn't contain template name then just prefix it
 		innerName := strings.ToUpper(t.Name[:1]) + t.Name[1:]
-		replacementName = name + innerName
+		replacementName = name.Name + innerName
 		debugf("Top level definition '%s' doesn't contain template name '%s', using '%s'", name, t.templateName, replacementName)
 	} else {
 		// make sure the new identifier will follow
 		// Go casing style (newMySet not newmySet).
 		innerName := t.Name
-		if strings.Index(name, t.templateName) != 0 {
+		if strings.Index(name.Name, t.templateName) != 0 {
 			innerName = strings.ToUpper(innerName[:1]) + innerName[1:]
 		}
-		replacementName = strings.Replace(name, t.templateName, innerName, 1)
+		replacementName = strings.Replace(name.Name, t.templateName, innerName, 1)
 	}
 	// If new template name is not public then make sure
 	// the exported name is not public too
 	if !t.newIsPublic && ast.IsExported(replacementName) {
 		replacementName = strings.ToLower(replacementName[:1]) + replacementName[1:]
 	}
-	t.mappings[name] = replacementName
+	t.mappings[name] = ast.NewIdent(replacementName)
 }
 
 // Parse the arguments string Template(A, B, C)
-func parseTemplateAndArgs(s string) (name string, args []string) {
+func parseTemplateAndArgs(s string) (name string, args []ast.Expr) {
 	expr, err := parser.ParseExpr(s)
 	if err != nil {
 		fatalf("Failed to parse %q: %v", s, err)
@@ -96,11 +96,13 @@ func parseTemplateAndArgs(s string) (name string, args []string) {
 	name = fn.Name
 	for i, arg := range callExpr.Args {
 		var buf bytes.Buffer
+		// Not sure how much debugf is necessary here
+		// since we're not using s anymore.
 		debugf("arg[%d] = %#v", i, arg)
 		format.Node(&buf, token.NewFileSet(), arg)
 		s := buf.String()
 		debugf("parsed = %q", s)
-		args = append(args, s)
+		args = append(args, arg)
 	}
 	return
 }
@@ -119,7 +121,9 @@ func (t *template) findTemplateDefinition(f *ast.File) {
 				if t.templateName != "" {
 					fatalf("Found multiple template definitions in %s", t.inputFile)
 				}
-				t.templateName, t.templateArgs = parseTemplateAndArgs(matches[1])
+				var tmplArgs []ast.Expr
+				t.templateName, tmplArgs = parseTemplateAndArgs(matches[1])
+				t.templateArgs = ensureIdentifiers(tmplArgs)
 			}
 		}
 	}
@@ -130,6 +134,25 @@ func (t *template) findTemplateDefinition(f *ast.File) {
 		fatalf("Wrong number of arguments - template is expecting %d but %d supplied", len(t.Args), len(t.templateArgs))
 	}
 	debugf("templateName = %v, templateArgs = %v", t.templateName, t.templateArgs)
+}
+
+// ensureIdentifiers converts a slice of ast.Expr
+// to a slice of *ast.Ident.
+//
+// Exits with fatal error if an expression is not an
+// *ast.Ident.
+func ensureIdentifiers(exprs []ast.Expr) []*ast.Ident {
+	result := []*ast.Ident{}
+	for _, exp := range exprs {
+		ident, ok := exp.(*ast.Ident)
+		if !ok {
+			var buf = new(bytes.Buffer)
+			format.Node(buf, token.NewFileSet(), exp)
+			fatalf("Expected identifier instead of %s", buf.String())
+		}
+		result = append(result, ident)
+	}
+	return result
 }
 
 // Ouput the go formatted file
@@ -161,27 +184,14 @@ func parseFile(path string) (*token.FileSet, *ast.File) {
 	return fset, f
 }
 
-// Replace the identifers in f
-func replaceIdentifier(f *ast.File, old, new string) {
-	// Inspect the AST and print all identifiers and literals.
-	ast.Inspect(f, func(n ast.Node) bool {
-		switch x := n.(type) {
-		case *ast.Ident:
-			// We replace the identifier name
-			// which is a bit untidy if we weren't
-			// replacing with an identifier
-			if x.Name == old {
-				x.Name = new
-			}
-		}
-		return true
-	})
+func replaceIdentifier(file *ast.File, old *ast.Ident, new ast.Expr) {
+	*file = *rewriteFile(old, new, file)
 }
 
 // Return true if name is a template argument
-func (t *template) isTemplateArgument(name string) bool {
+func (t *template) isTemplateArgument(name *ast.Ident) bool {
 	for _, item := range t.templateArgs {
-		if item == name {
+		if item.Name == name.Name {
 			return true
 		}
 	}
@@ -199,7 +209,7 @@ func (t *template) parse(inputFile string) {
 
 	// debugf("Decls = %#v", f.Decls)
 	// Find names which need to be adjusted
-	namesToMangle := []string{}
+	namesToMangle := []*ast.Ident{}
 	newDecls := []ast.Decl{}
 	for _, Decl := range f.Decls {
 		remove := false
@@ -218,8 +228,8 @@ func (t *template) parse(inputFile string) {
 					v := spec.(*ast.ValueSpec)
 					for j, name := range v.Names {
 						debugf("VAR or CONST %v", name.Name)
-						namesToMangle = append(namesToMangle, name.Name)
-						if t.isTemplateArgument(name.Name) {
+						namesToMangle = append(namesToMangle, name)
+						if t.isTemplateArgument(name) {
 							namesToRemove = append(namesToRemove, j)
 						}
 					}
@@ -245,9 +255,9 @@ func (t *template) parse(inputFile string) {
 				for i, spec := range d.Specs {
 					typeSpec := spec.(*ast.TypeSpec)
 					debugf("Type %v", typeSpec.Name.Name)
-					namesToMangle = append(namesToMangle, typeSpec.Name.Name)
+					namesToMangle = append(namesToMangle, typeSpec.Name)
 					// Remove type A if it is a template definition
-					if t.isTemplateArgument(typeSpec.Name.Name) {
+					if t.isTemplateArgument(typeSpec.Name) {
 						namesToRemove = append(namesToRemove, i)
 					}
 				}
@@ -267,9 +277,9 @@ func (t *template) parse(inputFile string) {
 			} else {
 				//debugf("FuncDecl = %#v", d)
 				debugf("FuncDecl = %s", d.Name.Name)
-				namesToMangle = append(namesToMangle, d.Name.Name)
+				namesToMangle = append(namesToMangle, d.Name)
 				// Remove func A() if it is a template definition
-				remove = t.isTemplateArgument(d.Name.Name)
+				remove = t.isTemplateArgument(d.Name)
 			}
 		default:
 			fatalf("Unknown Decl %#v", Decl)
@@ -290,7 +300,7 @@ func (t *template) parse(inputFile string) {
 
 	found := false
 	for _, name := range namesToMangle {
-		if name == t.templateName {
+		if name.Name == t.templateName {
 			found = true
 			t.addMapping(name)
 		} else if _, found := t.mappings[name]; !found {
@@ -321,9 +331,21 @@ func (t *template) parse(inputFile string) {
 	logf("Written '%s'", outputFileName)
 }
 
+func joinExprs(exprs []ast.Expr, sep string) string {
+	buf := new(bytes.Buffer)
+	parts := []string{}
+	fset := token.NewFileSet()
+	for _, exp := range exprs {
+		buf.Reset()
+		format.Node(buf, fset, exp)
+		parts = append(parts, buf.String())
+	}
+	return strings.Join(parts, sep)
+}
+
 // Instantiate the template package
 func (t *template) instantiate() {
-	logf("Substituting %q with %s(%s) into package %s", t.Package, t.Name, strings.Join(t.Args, ","), t.NewPackage)
+	logf("Substituting %q with %s(%s) into package %s", t.Package, t.Name, joinExprs(t.Args, ","), t.NewPackage)
 
 	p, err := build.Default.Import(t.Package, t.Dir, build.ImportMode(0))
 	if err != nil {
