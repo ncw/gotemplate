@@ -66,7 +66,18 @@ func testReplaceIdent(t *testing.T, tr TestReplacement) {
 		fatalf("Failed to format post-replace source: %v", err)
 	}
 
-	if buf.String() != tr.expected {
+	actual := buf.String()
+	if actual != tr.expected {
+		t.Errorf(`Output is wrong
+Got
+-------------
+%s
+-------------
+Expected
+-------------
+%s
+-------------
+`, actual, tr.expected)
 		dir, err := ioutil.TempDir("", "gotemplate_test")
 		if err != nil {
 			t.Fatalf("Failed to make temp dir: %v", err)
@@ -89,7 +100,7 @@ func testReplaceIdent(t *testing.T, tr TestReplacement) {
 			t.Fatalf("Failed to write %q: %v", expectedFile, err)
 		}
 		actualFile := expectedFile + ".actual"
-		err = ioutil.WriteFile(actualFile, []byte(buf.String()), 0600)
+		err = ioutil.WriteFile(actualFile, []byte(actual), 0600)
 		if err != nil {
 			t.Fatalf("Failed to write %q: %v", actualFile, err)
 		}
