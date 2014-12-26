@@ -440,9 +440,8 @@ Expected
 }
 
 func TestSub(t *testing.T) {
-	fatalf = func(format string, args ...interface{}) {
-		t.Fatalf(format, args...)
-	}
+	fatalf = t.Fatalf
+	debugf = t.Logf
 	for i := range tests {
 		t.Logf("Test[%d] %q", i, tests[i].title)
 		testTemplate(t, &tests[i])

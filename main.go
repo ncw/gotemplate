@@ -48,10 +48,12 @@ var fatalf = func(format string, args ...interface{}) {
 }
 
 // Log if -v set
-func debugf(format string, args ...interface{}) {
-	if *verbose {
-		logf(format, args...)
-	}
+var debugf = func(format string, args ...interface{}) {
+	logf(format, args...)
+}
+
+// Do nothing if -v not set
+var nullDebugf = func(format string, args ...interface{}) {
 }
 
 // usage prints the syntax and exists
@@ -72,6 +74,9 @@ func main() {
 	args := flag.Args()
 	if len(args) != 2 {
 		fatalf("Need 2 arguments, package and parameters")
+	}
+	if !*verbose {
+		debugf = nullDebugf
 	}
 
 	cwd, err := os.Getwd()
