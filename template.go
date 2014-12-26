@@ -23,8 +23,8 @@ type template struct {
 	NewPackage   string
 	Dir          string
 	templateName string
-	templateArgs []*ast.Ident
-	mappings     map[*ast.Ident]ast.Expr
+	templateArgs []string
+	mappings     map[string]ast.Expr
 	newIsPublic  bool
 	inputFile    string
 }
@@ -47,27 +47,27 @@ func newTemplate(dir, pkg, templateArgsString string) *template {
 		Name:       name,
 		Args:       templateArgs,
 		Dir:        dir,
-		mappings:   make(map[*ast.Ident]ast.Expr),
+		mappings:   make(map[string]ast.Expr),
 		NewPackage: findPackageName(),
 	}
 }
 
 // Add a mapping for identifier
-func (t *template) addMapping(name *ast.Ident) {
+func (t *template) addMapping(name string) {
 	replacementName := ""
-	if !strings.Contains(name.Name, t.templateName) {
+	if !strings.Contains(name, t.templateName) {
 		// If name doesn't contain template name then just prefix it
 		innerName := strings.ToUpper(t.Name[:1]) + t.Name[1:]
-		replacementName = name.Name + innerName
+		replacementName = name + innerName
 		debugf("Top level definition '%s' doesn't contain template name '%s', using '%s'", name, t.templateName, replacementName)
 	} else {
 		// make sure the new identifier will follow
 		// Go casing style (newMySet not newmySet).
 		innerName := t.Name
-		if strings.Index(name.Name, t.templateName) != 0 {
+		if strings.Index(name, t.templateName) != 0 {
 			innerName = strings.ToUpper(innerName[:1]) + innerName[1:]
 		}
-		replacementName = strings.Replace(name.Name, t.templateName, innerName, 1)
+		replacementName = strings.Replace(name, t.templateName, innerName, 1)
 	}
 	// If new template name is not public then make sure
 	// the exported name is not public too
@@ -77,8 +77,9 @@ func (t *template) addMapping(name *ast.Ident) {
 	t.mappings[name] = ast.NewIdent(replacementName)
 }
 
-// Parse the arguments string Template(A, B, C)
-func parseTemplateAndArgs(s string) (name string, args []ast.Expr) {
+// Parse the arguments string Template(A, B, C) into the name of the
+// template and a slice of the arguments
+func parseTemplateAndArgs(s string) (string, []ast.Expr) {
 	expr, err := parser.ParseExpr(s)
 	if err != nil {
 		fatalf("Failed to parse %q: %v", s, err)
@@ -93,18 +94,7 @@ func parseTemplateAndArgs(s string) (name string, args []ast.Expr) {
 	if !ok {
 		fatalf("Failed to parse %q: expecting Identifier(...)", s)
 	}
-	name = fn.Name
-	for i, arg := range callExpr.Args {
-		var buf bytes.Buffer
-		// Not sure how much debugf is necessary here
-		// since we're not using s anymore.
-		debugf("arg[%d] = %#v", i, arg)
-		format.Node(&buf, token.NewFileSet(), arg)
-		s := buf.String()
-		debugf("parsed = %q", s)
-		args = append(args, arg)
-	}
-	return
+	return fn.Name, callExpr.Args
 }
 
 // "template type Set(A)"
@@ -136,13 +126,12 @@ func (t *template) findTemplateDefinition(f *ast.File) {
 	debugf("templateName = %v, templateArgs = %v", t.templateName, t.templateArgs)
 }
 
-// ensureIdentifiers converts a slice of ast.Expr
-// to a slice of *ast.Ident.
+// ensureIdentifiers converts a slice of ast.Expr to a slice of string
+// with the identifier names
 //
-// Exits with fatal error if an expression is not an
-// *ast.Ident.
-func ensureIdentifiers(exprs []ast.Expr) []*ast.Ident {
-	result := []*ast.Ident{}
+// Exits with fatal error if an expression is not an *ast.Ident.
+func ensureIdentifiers(exprs []ast.Expr) []string {
+	result := []string{}
 	for _, exp := range exprs {
 		ident, ok := exp.(*ast.Ident)
 		if !ok {
@@ -150,7 +139,7 @@ func ensureIdentifiers(exprs []ast.Expr) []*ast.Ident {
 			format.Node(buf, token.NewFileSet(), exp)
 			fatalf("Expected identifier instead of %s", buf.String())
 		}
-		result = append(result, ident)
+		result = append(result, ident.Name)
 	}
 	return result
 }
@@ -184,14 +173,10 @@ func parseFile(path string) (*token.FileSet, *ast.File) {
 	return fset, f
 }
 
-func replaceIdentifier(file *ast.File, old *ast.Ident, new ast.Expr) {
-	*file = *rewriteFile(old, new, file)
-}
-
 // Return true if name is a template argument
-func (t *template) isTemplateArgument(name *ast.Ident) bool {
+func (t *template) isTemplateArgument(name string) bool {
 	for _, item := range t.templateArgs {
-		if item.Name == name.Name {
+		if item == name {
 			return true
 		}
 	}
@@ -209,7 +194,7 @@ func (t *template) parse(inputFile string) {
 
 	// debugf("Decls = %#v", f.Decls)
 	// Find names which need to be adjusted
-	namesToMangle := []*ast.Ident{}
+	namesToMangle := []string{}
 	newDecls := []ast.Decl{}
 	for _, Decl := range f.Decls {
 		remove := false
@@ -228,8 +213,8 @@ func (t *template) parse(inputFile string) {
 					v := spec.(*ast.ValueSpec)
 					for j, name := range v.Names {
 						debugf("VAR or CONST %v", name.Name)
-						namesToMangle = append(namesToMangle, name)
-						if t.isTemplateArgument(name) {
+						namesToMangle = append(namesToMangle, name.Name)
+						if t.isTemplateArgument(name.Name) {
 							namesToRemove = append(namesToRemove, j)
 						}
 					}
@@ -255,9 +240,9 @@ func (t *template) parse(inputFile string) {
 				for i, spec := range d.Specs {
 					typeSpec := spec.(*ast.TypeSpec)
 					debugf("Type %v", typeSpec.Name.Name)
-					namesToMangle = append(namesToMangle, typeSpec.Name)
+					namesToMangle = append(namesToMangle, typeSpec.Name.Name)
 					// Remove type A if it is a template definition
-					if t.isTemplateArgument(typeSpec.Name) {
+					if t.isTemplateArgument(typeSpec.Name.Name) {
 						namesToRemove = append(namesToRemove, i)
 					}
 				}
@@ -277,9 +262,9 @@ func (t *template) parse(inputFile string) {
 			} else {
 				//debugf("FuncDecl = %#v", d)
 				debugf("FuncDecl = %s", d.Name.Name)
-				namesToMangle = append(namesToMangle, d.Name)
+				namesToMangle = append(namesToMangle, d.Name.Name)
 				// Remove func A() if it is a template definition
-				remove = t.isTemplateArgument(d.Name)
+				remove = t.isTemplateArgument(d.Name.Name)
 			}
 		default:
 			fatalf("Unknown Decl %#v", Decl)
@@ -300,7 +285,7 @@ func (t *template) parse(inputFile string) {
 
 	found := false
 	for _, name := range namesToMangle {
-		if name.Name == t.templateName {
+		if name == t.templateName {
 			found = true
 			t.addMapping(name)
 		} else if _, found := t.mappings[name]; !found {
@@ -315,7 +300,7 @@ func (t *template) parse(inputFile string) {
 
 	// Replace the identifiers
 	for name, replacement := range t.mappings {
-		replaceIdentifier(f, name, replacement)
+		f = rewriteFile(f, name, replacement)
 	}
 
 	// Change the package to the local package name

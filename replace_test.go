@@ -15,7 +15,7 @@ import (
 
 type TestReplacement struct {
 	title    string
-	id       *ast.Ident
+	id       string
 	val      ast.Expr
 	source   string
 	expected string
@@ -32,7 +32,7 @@ func parseExpr(s string) ast.Expr {
 var replaceTests = []TestReplacement{
 	{
 		title: "basic test",
-		id:    ast.NewIdent("A"),
+		id:    "A",
 		val:   parseExpr("int"),
 		source: `package tt
 
@@ -58,7 +58,7 @@ func testReplaceIdent(t *testing.T, tr TestReplacement) {
 		fatalf("Failed to parse source: %s", err.Error())
 	}
 
-	replaceIdentifier(file, tr.id, tr.val)
+	file = rewriteFile(file, tr.id, tr.val)
 
 	buf := new(bytes.Buffer)
 	err = format.Node(buf, fset, file)

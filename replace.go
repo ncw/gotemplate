@@ -18,10 +18,10 @@ import (
 	"strings"
 )
 
-// rewriteFile applies the rewrite rule 'pattern -> replace' to an entire file.
-func rewriteFile(pattern *ast.Ident, replace ast.Expr, p *ast.File) *ast.File {
+// rewriteFile replaces identifier with replacement in p returning a new *ast.File
+func rewriteFile(p *ast.File, identifier string, replacement ast.Expr) *ast.File {
 	cmap := ast.NewCommentMap(token.NewFileSet(), p, p.Comments)
-	repl := reflect.ValueOf(replace)
+	repl := reflect.ValueOf(replacement)
 
 	var rewriteVal func(val reflect.Value) reflect.Value
 	rewriteVal = func(val reflect.Value) reflect.Value {
@@ -30,7 +30,8 @@ func rewriteFile(pattern *ast.Ident, replace ast.Expr, p *ast.File) *ast.File {
 			return reflect.Value{}
 		}
 		val = apply(rewriteVal, val)
-		if match(pattern, val) {
+		// If val is a matching identifier, replace it
+		if n, ok := val.Interface().(*ast.Ident); ok && !val.IsNil() && n.Name == identifier {
 			return repl
 		}
 		return val
@@ -65,10 +66,7 @@ var (
 	objectPtrNil = reflect.ValueOf((*ast.Object)(nil))
 	scopePtrNil  = reflect.ValueOf((*ast.Scope)(nil))
 
-	identType     = reflect.TypeOf((*ast.Ident)(nil))
 	objectPtrType = reflect.TypeOf((*ast.Object)(nil))
-	positionType  = reflect.TypeOf(token.NoPos)
-	callExprType  = reflect.TypeOf((*ast.CallExpr)(nil))
 	scopePtrType  = reflect.TypeOf((*ast.Scope)(nil))
 )
 
@@ -107,13 +105,4 @@ func apply(f func(reflect.Value) reflect.Value, val reflect.Value) reflect.Value
 		set(v, f(e))
 	}
 	return val
-}
-
-// match returns true if pattern matches val,
-func match(pattern *ast.Ident, val reflect.Value) bool {
-	name := pattern.Name
-	if n, ok := val.Interface().(*ast.Ident); ok && !val.IsNil() {
-		return n.Name == name
-	}
-	return false
 }
