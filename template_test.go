@@ -121,16 +121,8 @@ func TTone(a A) A { return !Less(a, b) }
 
 // template type TT(A, Less)
 
-func Min(a, b int8) int8 {
-	return func(a int8, b int8) bool {
-		return a < b
-	}(a, b)
-}
-func Minone(a int8) int8 {
-	return !func(a int8, b int8) bool {
-		return a < b
-	}(a, b)
-}
+func Min(a, b int8) int8 { return func(a int8, b int8) bool { return a < b }(a, b) }
+func Minone(a int8) int8 { return !func(a int8, b int8) bool { return a < b }(a, b) }
 `,
 	},
 	{
@@ -325,7 +317,6 @@ type importantTypeTmpl bool
 
 type (
 	importantType1Tmpl int
-
 	importantType2Tmpl map[int]int
 )
 
@@ -407,10 +398,10 @@ func testTemplate(t *testing.T, test *TestTemplate) {
 	template.instantiate()
 
 	// Check output
-	expectedFile := path.Join(output, test.outName)
-	actualBytes, err := ioutil.ReadFile(expectedFile)
+	actualFile := path.Join(output, test.outName)
+	actualBytes, err := ioutil.ReadFile(actualFile)
 	if err != nil {
-		t.Fatalf("Failed to read %q: %v", expectedFile, err)
+		t.Fatalf("Failed to read %q: %v", actualFile, err)
 	}
 	actual := string(actualBytes)
 	if actual != test.out {
@@ -424,12 +415,12 @@ Expected
 %s
 -------------
 `, actual, test.out)
-		actualFile := expectedFile + ".actual"
-		err = ioutil.WriteFile(actualFile, []byte(test.out), 0600)
+		expectedFile := actualFile + ".expected"
+		err = ioutil.WriteFile(expectedFile, []byte(test.out), 0600)
 		if err != nil {
-			t.Fatalf("Failed to write %q: %v", actualFile, err)
+			t.Fatalf("Failed to write %q: %v", expectedFile, err)
 		}
-		cmd := exec.Command("diff", "-u", actualFile, expectedFile)
+		cmd := exec.Command("diff", "-u", expectedFile, actualFile)
 		var out bytes.Buffer
 		cmd.Stdout = &out
 		cmd.Stderr = &out
@@ -441,7 +432,7 @@ Expected
 
 func TestSub(t *testing.T) {
 	fatalf = t.Fatalf
-	debugf = t.Logf
+	//debugf = t.Logf
 	for i := range tests {
 		t.Logf("Test[%d] %q", i, tests[i].title)
 		testTemplate(t, &tests[i])

@@ -104,7 +104,7 @@ Expected
 		if err != nil {
 			t.Fatalf("Failed to write %q: %v", actualFile, err)
 		}
-		cmd := exec.Command("diff", "-u", actualFile, expectedFile)
+		cmd := exec.Command("diff", "-u", expectedFile, actualFile)
 		var out bytes.Buffer
 		cmd.Stdout = &out
 		cmd.Stderr = &out
