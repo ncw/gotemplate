@@ -7,7 +7,6 @@
 //
 // Changes from the original:
 // rewriteFile creates a FileSet instead of referencing a global.
-// match only matches identifiers
 
 package main
 
@@ -26,12 +25,12 @@ func rewriteFile(p *ast.File, identifier string, replacement ast.Expr) *ast.File
 	rewriteVal = func(val reflect.Value) reflect.Value {
 		// don't bother if val is invalid to start with
 		if !val.IsValid() {
-			fatalf("Value is invalid %v", val)
+			return val
 		}
 		val = apply(rewriteVal, val)
 		// If val is a matching identifier, replace it
-		if n, ok := val.Interface().(*ast.Ident); ok && !val.IsNil() && n.Name == identifier {
-			return repl
+		if ident, ok := val.Interface().(*ast.Ident); ok && !val.IsNil() && ident.Name == identifier {
+			return subst(repl, reflect.ValueOf(ident.Pos()))
 		}
 		return val
 	}
@@ -44,11 +43,8 @@ func rewriteFile(p *ast.File, identifier string, replacement ast.Expr) *ast.File
 // set is a wrapper for x.Set(y); it protects the caller from panics if x cannot be changed to y.
 func set(x, y reflect.Value) {
 	// don't bother if x cannot be set or y is invalid
-	if !x.CanSet() {
-		fatalf("Can't set value %v", x)
-	}
-	if !y.IsValid() {
-		fatalf("Replacement %v is invalid", y)
+	if !x.CanSet() || !y.IsValid() {
+		return
 	}
 	defer func() {
 		if e := recover(); e != nil {
@@ -64,6 +60,7 @@ var (
 	scopePtrNil  = reflect.ValueOf((*ast.Scope)(nil))
 
 	objectPtrType = reflect.TypeOf((*ast.Object)(nil))
+	positionType  = reflect.TypeOf(token.NoPos)
 	scopePtrType  = reflect.TypeOf((*ast.Scope)(nil))
 )
 
@@ -71,7 +68,7 @@ var (
 // To avoid extra conversions, f operates on the reflect.Value form.
 func apply(f func(reflect.Value) reflect.Value, val reflect.Value) reflect.Value {
 	if !val.IsValid() {
-		fatalf("apply(%v) not valid", val)
+		return reflect.Value{}
 	}
 
 	// *ast.Objects introduce cycles and are likely incorrect after
@@ -102,4 +99,65 @@ func apply(f func(reflect.Value) reflect.Value, val reflect.Value) reflect.Value
 		set(v, f(e))
 	}
 	return val
+}
+
+// subst returns a copy of pattern with pos used as the position of
+// tokens from the pattern.
+func subst(pattern reflect.Value, pos reflect.Value) reflect.Value {
+	if !pattern.IsValid() {
+		return reflect.Value{}
+	}
+
+	// *ast.Objects introduce cycles and are likely incorrect after
+	// rewrite; don't follow them but replace with nil instead
+	if pattern.Type() == objectPtrType {
+		return objectPtrNil
+	}
+
+	// similarly for scopes: they are likely incorrect after a rewrite;
+	// replace them with nil
+	if pattern.Type() == scopePtrType {
+		return scopePtrNil
+	}
+
+	if pos.IsValid() && pattern.Type() == positionType {
+		// use new position only if old position was valid in the first place
+		if old := pattern.Interface().(token.Pos); !old.IsValid() {
+			return pattern
+		}
+		return pos
+	}
+
+	// Otherwise copy.
+	switch p := pattern; p.Kind() {
+	case reflect.Slice:
+		v := reflect.MakeSlice(p.Type(), p.Len(), p.Len())
+		for i := 0; i < p.Len(); i++ {
+			v.Index(i).Set(subst(p.Index(i), pos))
+		}
+		return v
+
+	case reflect.Struct:
+		v := reflect.New(p.Type()).Elem()
+		for i := 0; i < p.NumField(); i++ {
+			v.Field(i).Set(subst(p.Field(i), pos))
+		}
+		return v
+
+	case reflect.Ptr:
+		v := reflect.New(p.Type()).Elem()
+		if elem := p.Elem(); elem.IsValid() {
+			v.Set(subst(elem, pos).Addr())
+		}
+		return v
+
+	case reflect.Interface:
+		v := reflect.New(p.Type()).Elem()
+		if elem := p.Elem(); elem.IsValid() {
+			v.Set(subst(elem, pos))
+		}
+		return v
+	}
+
+	return pattern
 }
