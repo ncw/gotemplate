@@ -15,7 +15,6 @@ import (
 	"go/ast"
 	"go/token"
 	"reflect"
-	"strings"
 )
 
 // rewriteFile replaces identifier with replacement in p returning a new *ast.File
@@ -27,7 +26,7 @@ func rewriteFile(p *ast.File, identifier string, replacement ast.Expr) *ast.File
 	rewriteVal = func(val reflect.Value) reflect.Value {
 		// don't bother if val is invalid to start with
 		if !val.IsValid() {
-			return reflect.Value{}
+			fatalf("Value is invalid %v", val)
 		}
 		val = apply(rewriteVal, val)
 		// If val is a matching identifier, replace it
@@ -45,17 +44,15 @@ func rewriteFile(p *ast.File, identifier string, replacement ast.Expr) *ast.File
 // set is a wrapper for x.Set(y); it protects the caller from panics if x cannot be changed to y.
 func set(x, y reflect.Value) {
 	// don't bother if x cannot be set or y is invalid
-	if !x.CanSet() || !y.IsValid() {
-		return
+	if !x.CanSet() {
+		fatalf("Can't set value %v", x)
+	}
+	if !y.IsValid() {
+		fatalf("Replacement %v is invalid", y)
 	}
 	defer func() {
-		if x := recover(); x != nil {
-			if s, ok := x.(string); ok &&
-				(strings.Contains(s, "type mismatch") || strings.Contains(s, "not assignable")) {
-				// x cannot be set to y - ignore this rewrite
-				return
-			}
-			panic(x)
+		if e := recover(); e != nil {
+			fatalf("Failure while setting value %v to %v: %v", x, y, e)
 		}
 	}()
 	x.Set(y)
@@ -74,7 +71,7 @@ var (
 // To avoid extra conversions, f operates on the reflect.Value form.
 func apply(f func(reflect.Value) reflect.Value, val reflect.Value) reflect.Value {
 	if !val.IsValid() {
-		return reflect.Value{}
+		fatalf("apply(%v) not valid", val)
 	}
 
 	// *ast.Objects introduce cycles and are likely incorrect after
