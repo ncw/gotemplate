@@ -325,6 +325,10 @@ func (t *template) parse(inputFile string) {
 	// Output
 	outputFileName := "gotemplate_" + t.Name + ".go"
 	outputFile(fset, f, outputFileName)
+
+	// gofmt one last time to fix small oddities in generated source
+	fset, f = parseFile(outputFileName)
+	outputFile(fset, f, outputFileName)
 	logf("Written '%s'", outputFileName)
 }
 
