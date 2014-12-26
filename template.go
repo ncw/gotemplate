@@ -94,6 +94,10 @@ func parseTemplateAndArgs(s string) (string, []ast.Expr) {
 	if !ok {
 		fatalf("Failed to parse %q: expecting Identifier(...)", s)
 	}
+	debugf("Parsed into Name %q")
+	for i, expr := range callExpr.Args {
+		debugf("arg[%d] = %s", i, debugExpr(expr))
+	}
 	return fn.Name, callExpr.Args
 }
 
@@ -126,6 +130,20 @@ func (t *template) findTemplateDefinition(f *ast.File) {
 	debugf("templateName = %v, templateArgs = %v", t.templateName, t.templateArgs)
 }
 
+// dumpExpr returns an ast.Expr as a string
+func dumpExpr(exp ast.Expr) string {
+	var buf = new(bytes.Buffer)
+	format.Node(buf, token.NewFileSet(), exp)
+	return buf.String()
+}
+
+// debugExpr returns an ast.Expr as a string with a fully expanded ast
+func debugExpr(exp ast.Expr) string {
+	var buf = new(bytes.Buffer)
+	ast.Fprint(buf, nil, exp, nil)
+	return buf.String()
+}
+
 // ensureIdentifiers converts a slice of ast.Expr to a slice of string
 // with the identifier names
 //
@@ -135,9 +153,7 @@ func ensureIdentifiers(exprs []ast.Expr) []string {
 	for _, exp := range exprs {
 		ident, ok := exp.(*ast.Ident)
 		if !ok {
-			var buf = new(bytes.Buffer)
-			format.Node(buf, token.NewFileSet(), exp)
-			fatalf("Expected identifier instead of %s", buf.String())
+			fatalf("Expected identifier instead of %s", dumpExpr(exp))
 		}
 		result = append(result, ident.Name)
 	}
@@ -312,14 +328,11 @@ func (t *template) parse(inputFile string) {
 	logf("Written '%s'", outputFileName)
 }
 
+// joinExprs returns exprs as a string joined with sep
 func joinExprs(exprs []ast.Expr, sep string) string {
-	buf := new(bytes.Buffer)
 	parts := []string{}
-	fset := token.NewFileSet()
 	for _, exp := range exprs {
-		buf.Reset()
-		format.Node(buf, fset, exp)
-		parts = append(parts, buf.String())
+		parts = append(parts, dumpExpr(exp))
 	}
 	return strings.Join(parts, sep)
 }
