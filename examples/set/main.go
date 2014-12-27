@@ -9,7 +9,7 @@ import "fmt"
 //
 //go:generate gotemplate "github.com/ncw/gotemplate/set" mySet(string)
 func main() {
-	s := newmySet()
+	s := newMySet()
 	s.Add("Sausage")
 	s.Add("Bacon")
 	fmt.Println(s)

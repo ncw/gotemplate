@@ -13,15 +13,15 @@ type mySet struct {
 }
 
 // Returns a new empty set with the given capacity
-func newSizedmySet(capacity int) *mySet {
+func newSizedMySet(capacity int) *mySet {
 	return &mySet{
 		m: make(map[string]mySetNothing, capacity),
 	}
 }
 
 // Returns a new empty set
-func newmySet() *mySet {
-	return newSizedmySet(0)
+func newMySet() *mySet {
+	return newSizedMySet(0)
 }
 
 // Returns the number of elements in the set
@@ -104,7 +104,7 @@ func (s *mySet) Clear() *mySet {
 
 // Copy returns a shallow copy of the Set
 func (s *mySet) Copy() *mySet {
-	newSet := newSizedmySet(len(s.m))
+	newSet := newSizedMySet(len(s.m))
 	for elem := range s.m {
 		newSet.m[elem] = mySetNothing{}
 	}
@@ -114,7 +114,7 @@ func (s *mySet) Copy() *mySet {
 // Difference returns a new set with all the elements that are in this
 // set but not in the other
 func (s *mySet) Difference(other *mySet) *mySet {
-	newSet := newSizedmySet(len(s.m))
+	newSet := newSizedMySet(len(s.m))
 	for elem := range s.m {
 		if _, found := other.m[elem]; !found {
 			newSet.m[elem] = mySetNothing{}
@@ -136,7 +136,7 @@ func (s *mySet) DifferenceUpdate(other *mySet) *mySet {
 // Intersection returns a new set with all the elements that are only in this
 // set and the other set. It returns the new set.
 func (s *mySet) Intersection(other *mySet) *mySet {
-	newSet := newSizedmySet(len(s.m) + len(other.m))
+	newSet := newSizedMySet(len(s.m) + len(other.m))
 	for elem := range s.m {
 		if _, found := other.m[elem]; found {
 			newSet.m[elem] = mySetNothing{}
@@ -165,7 +165,7 @@ func (s *mySet) IntersectionUpdate(other *mySet) *mySet {
 // Union returns a new set with all the elements that are in either
 // set. It returns the new set.
 func (s *mySet) Union(other *mySet) *mySet {
-	newSet := newSizedmySet(len(s.m) + len(other.m))
+	newSet := newSizedMySet(len(s.m) + len(other.m))
 	for elem := range s.m {
 		newSet.m[elem] = mySetNothing{}
 	}

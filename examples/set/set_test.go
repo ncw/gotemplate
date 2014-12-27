@@ -7,7 +7,7 @@ import (
 )
 
 func TestSet(t *testing.T) {
-	s := newmySet()
+	s := newMySet()
 	s.Add("Sausage")
 	s.Add("Bacon")
 	actual := s.AsList()
