@@ -185,29 +185,29 @@ func (s *Set) Update(other *Set) *Set {
 	return s
 }
 
-func (s *Set) IsSuperset(b bool, sub *Set) bool {
-	return SubSup(b, sub, s)
+func (s *Set) IsSuperset(b bool, other *Set) bool {
+	return SubSup(b, other, s)
 }
 
-func (s *Set) IsSubset(b bool, sub *Set) bool {
-	return SubSup(b, s, sub)
+func (s *Set) IsSubset(b bool, other *Set) bool {
+	return SubSup(b, s, other)
 }
 
-func (s *Set) IsDisjoint(a *Set) bool {
+func (s *Set) IsDisjoint(other *Set) bool {
 	for v := range s.m {
-		if a.Contains(v) {
+		if other.Contains(v) {
 			return false
 		}
 	}
 	return true
 }
 
-func (s *Set) SymmetricDifference(a *Set) *Set {
-	return SDifference(s, a)
+func (s *Set) SymmetricDifference(other *Set) *Set {
+	return SDifference(s, other)
 }
 
-func (s *Set) SymmetricDifferenceUpdate(a *Set) *Set {
-	work := SDifference(s, a)
+func (s *Set) SymmetricDifferenceUpdate(other *Set) *Set {
+	work := SDifference(s, other)
 	*s = *work
 	return s
 }
