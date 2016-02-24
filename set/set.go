@@ -185,21 +185,54 @@ func (s *Set) Update(other *Set) *Set {
 	return s
 }
 
-/*
- |  isdisjoint(...)
- |      Return True if two sets have a null intersection.
- |
- |  issubset(...)
- |      Report whether another set contains this set.
- |
- |  issuperset(...)
- |      Report whether this set contains another set.
- |
- |  symmetric_difference(...)
- |      Return the symmetric difference of two sets as a new set.
- |
- |      (i.e. all elements that are in exactly one of the sets.)
- |
- |  symmetric_difference_update(...)
- |      Update a set with the symmetric difference of itself and another.
-*/
+func (s *Set) IsSuperset(b bool, sub *Set) bool {
+	return SubSup(b, sub, s)
+}
+
+func (s *Set) IsSubset(b bool, sub *Set) bool {
+	return SubSup(b, s, sub)
+}
+
+func (s *Set) IsDisjoint(a *Set) bool {
+	for v := range s.m {
+		if a.Contains(v) {
+			return false
+		}
+	}
+	return true
+}
+
+func (s *Set) SymmetricDifference(a *Set) *Set {
+	return SDifference(s, a)
+}
+
+func (s *Set) SymmetricDifferenceUpdate(a *Set) *Set {
+	work := SDifference(s, a)
+	*s = *work
+	return s
+}
+
+func SDifference(a *Set, b *Set) *Set {
+	work1 := a.Union(b)
+	work2 := a.Intersection(b)
+	for v := range work2.m {
+		delete(work1.m, v)
+	}
+	return work1
+}
+
+func SubSup(strict bool, sub *Set, sup *Set) bool {
+	if strict && len(sub.m) >= len(sup.m) {
+		return false
+	}
+Sub:
+	for v := range sub.m {
+		for i := range sup.m {
+			if v == i {
+				continue Sub
+			}
+		}
+		return false
+	}
+	return true
+}
