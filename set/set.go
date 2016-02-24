@@ -185,14 +185,17 @@ func (s *Set) Update(other *Set) *Set {
 	return s
 }
 
-func (s *Set) IsSuperset(b bool, other *Set) bool {
-	return SubSup(b, other, s)
+// IsSuperset returns a bool indicating whether this set is a superset of other set.
+func (s *Set) IsSuperset(strict bool, other *Set) bool {
+	return Superset(strict, s, other)
 }
 
-func (s *Set) IsSubset(b bool, other *Set) bool {
-	return SubSup(b, s, other)
+// IsSubset returns a bool indicating whether this set is a subset of other set.
+func (s *Set) IsSubset(strict bool, other *Set) bool {
+	return Subset(strict, s, other)
 }
 
+// IsDisjoint returns a bool indicating whether this set and other set have any elements in common.
 func (s *Set) IsDisjoint(other *Set) bool {
 	for v := range s.m {
 		if other.Contains(v) {
@@ -202,16 +205,23 @@ func (s *Set) IsDisjoint(other *Set) bool {
 	return true
 }
 
+// SymmetricDifference returns a new set of all elements that are a member of exactly
+// one of this set and other set(elements which are in one of the sets, but not in both).
 func (s *Set) SymmetricDifference(other *Set) *Set {
 	return SDifference(s, other)
 }
 
+// SymmetricDifferenceUpdate modifies this set to be a set of all elements that are a member
+// of exactly one of this set and other set(elements which are in one of the sets,
+// but not in both) and returns this set.
 func (s *Set) SymmetricDifferenceUpdate(other *Set) *Set {
 	work := SDifference(s, other)
 	*s = *work
 	return s
 }
 
+// SDifference returns a new set of all elements that are a member of exactly
+// one of A set and B set(elements which are in one of the sets, but not in both).
 func SDifference(a *Set, b *Set) *Set {
 	work1 := a.Union(b)
 	work2 := a.Intersection(b)
@@ -221,15 +231,33 @@ func SDifference(a *Set, b *Set) *Set {
 	return work1
 }
 
-func SubSup(strict bool, sub *Set, sup *Set) bool {
-	if strict && len(sub.m) >= len(sup.m) {
+// Subset returns a bool indicating whether A is a subset of B.
+func Subset(strict bool, a *Set, b *Set) bool {
+	if strict && len(a.m) >= len(b.m) {
 		return false
 	}
-Sub:
-	for v := range sub.m {
-		for i := range sup.m {
+A:
+	for v := range a.m {
+		for i := range b.m {
 			if v == i {
-				continue Sub
+				continue A
+			}
+		}
+		return false
+	}
+	return true
+}
+
+// Superset returns a bool indicating whether A is a superset of B.
+func Superset(strict bool, a *Set, b *Set) bool {
+	if strict && len(b.m) >= len(a.m) {
+		return false
+	}
+B:
+	for v := range b.m {
+		for i := range a.m {
+			if v == i {
+				continue B
 			}
 		}
 		return false
