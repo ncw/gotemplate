@@ -185,15 +185,15 @@ func (s *Set) Update(other *Set) *Set {
 	return s
 }
 
-func (s *Set) IsSuperset( b bool, sub *Set) bool {
-	return SubSup(b,sub,s)
+func (s *Set) IsSuperset(b bool, sub *Set) bool {
+	return SubSup(b, sub, s)
 }
 
-func (s *Set) IsSubset( b bool, sub *Set) bool {
-	return SubSup(b,s,sub)
+func (s *Set) IsSubset(b bool, sub *Set) bool {
+	return SubSup(b, s, sub)
 }
 
-func (s *Set) IsDisjoint( a *Set) bool {
+func (s *Set) IsDisjoint(a *Set) bool {
 	for v := range s.m {
 		if a.Contains(v) {
 			return false
@@ -202,12 +202,12 @@ func (s *Set) IsDisjoint( a *Set) bool {
 	return true
 }
 
-func (s *Set ) SymmetricDifference(a *Set) *Set {
-	return SDifference(s,a)
+func (s *Set) SymmetricDifference(a *Set) *Set {
+	return SDifference(s, a)
 }
 
-func (s *Set ) SymmetricDifferenceUpdate(a *Set) *Set {
-	work := SDifference(s,a)
+func (s *Set) SymmetricDifferenceUpdate(a *Set) *Set {
+	work := SDifference(s, a)
 	*s = *work
 	return s
 }
@@ -225,7 +225,8 @@ func SubSup(strict bool, sub *Set, sup *Set) bool {
 	if strict && len(sub.m) >= len(sup.m) {
 		return false
 	}
-	Sub:for v := range sub.m {
+Sub:
+	for v := range sub.m {
 		for i := range sup.m {
 			if v == i {
 				continue Sub
