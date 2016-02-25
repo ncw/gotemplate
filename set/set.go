@@ -185,21 +185,66 @@ func (s *Set) Update(other *Set) *Set {
 	return s
 }
 
-/*
- |  isdisjoint(...)
- |      Return True if two sets have a null intersection.
- |
- |  issubset(...)
- |      Report whether another set contains this set.
- |
- |  issuperset(...)
- |      Report whether this set contains another set.
- |
- |  symmetric_difference(...)
- |      Return the symmetric difference of two sets as a new set.
- |
- |      (i.e. all elements that are in exactly one of the sets.)
- |
- |  symmetric_difference_update(...)
- |      Update a set with the symmetric difference of itself and another.
-*/
+// IsSuperset returns a bool indicating whether this set is a superset of other set.
+func (s *Set) IsSuperset(strict bool, other *Set) bool {
+	if strict && len(other.m) >= len(s.m) {
+		return false
+	}
+A:
+	for v := range other.m {
+		for i := range s.m {
+			if v == i {
+				continue A
+			}
+		}
+		return false
+	}
+	return true
+}
+
+// IsSubset returns a bool indicating whether this set is a subset of other set.
+func (s *Set) IsSubset(strict bool, other *Set) bool {
+	if strict && len(s.m) >= len(other.m) {
+		return false
+	}
+A:
+	for v := range s.m {
+		for i := range other.m {
+			if v == i {
+				continue A
+			}
+		}
+		return false
+	}
+	return true
+}
+
+// IsDisjoint returns a bool indicating whether this set and other set have any elements in common.
+func (s *Set) IsDisjoint(other *Set) bool {
+	for v := range s.m {
+		if other.Contains(v) {
+			return false
+		}
+	}
+	return true
+}
+
+// SymmetricDifference returns a new set of all elements that are a member of exactly
+// one of this set and other set(elements which are in one of the sets, but not in both).
+func (s *Set) SymmetricDifference(other *Set) *Set {
+	work1 := s.Union(other)
+	work2 := s.Intersection(other)
+	for v := range work2.m {
+		delete(work1.m, v)
+	}
+	return work1
+}
+
+// SymmetricDifferenceUpdate modifies this set to be a set of all elements that are a member
+// of exactly one of this set and other set(elements which are in one of the sets,
+// but not in both) and returns this set.
+func (s *Set) SymmetricDifferenceUpdate(other *Set) *Set {
+	work := s.SymmetricDifference(other)
+	*s = *work
+	return s
+}
