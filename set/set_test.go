@@ -273,22 +273,22 @@ func TestSetIsSubset(t *testing.T) {
 	b := NewSet().Add(1).Add(2)
 	assertEqual(t, a, []int{1, 2, 3})
 	assertEqual(t, b, []int{1, 2})
-	//test if superset returns correctly with strict true
+	//test if subset returns correctly with strict true
 	if b.IsSubset(true, a) == false {
 		t.Fatal()
 	}
-	//test if superset returns correctly with strict false
+	//test if subset returns correctly with strict false
 	if b.IsSubset(false, a) == false {
 		t.Fatal()
 	}
 	b.Add(3)
 	assertEqual(t, a, []int{1, 2, 3})
 	assertEqual(t, b, []int{1, 2, 3})
-	//test if superset returns correctly with strict true
+	//test if subset returns correctly with strict true
 	if b.IsSubset(true, a) == true {
 		t.Fatal()
 	}
-	//test if superset returns correctly with strict false
+	//test if subset returns correctly with strict false
 	if b.IsSubset(false, a) == false {
 		t.Fatal()
 	}
