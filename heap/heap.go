@@ -22,12 +22,12 @@
 //
 package heap
 
-// A is the element in the slice []A we are keeping as a heap
-// Less is a function to compare two As
+// An A is the element in the slice []A we are keeping as a heap
 //
 // template type Heap(A, Less)
 type A int
 
+// Less is a function to compare two As
 func Less(a A, b A) bool {
 	return a < b
 }
@@ -35,7 +35,7 @@ func Less(a A, b A) bool {
 // Heap stored in an slice
 type Heap []A
 
-// A heap must be initialized before any of the heap operations
+// Init is compulsory before any of the heap operations
 // can be used. Init is idempotent with respect to the heap invariants
 // and may be called whenever the heap invariants may have been invalidated.
 // Its complexity is O(n) where n = len(h).

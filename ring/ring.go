@@ -7,6 +7,8 @@
 // Package ring implements operations on circular lists.
 package ring
 
+// An A is the element of the Ring
+//
 // template type Ring(A)
 type A int
 

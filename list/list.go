@@ -13,6 +13,8 @@
 //
 package list
 
+// An A is the element of the List
+//
 // template type List(A)
 type A int
 
@@ -63,7 +65,7 @@ func (l *List) Init() *List {
 	return l
 }
 
-// New returns an initialized list.
+// NewList returns an initialized list.
 func NewList() *List { return new(List).Init() }
 
 // Len returns the number of elements of list l.
@@ -131,7 +133,7 @@ func (l *List) Remove(e *ListElement) A {
 	return e.Value
 }
 
-// Pushfront inserts a new element e with value v at the front of list l and returns e.
+// PushFront inserts a new element e with value v at the front of list l and returns e.
 func (l *List) PushFront(v A) *ListElement {
 	l.lazyInit()
 	return l.insertValue(v, &l.root)
