@@ -97,7 +97,10 @@ func parseTemplateAndArgs(s string) (name string, args []string) {
 	for i, arg := range callExpr.Args {
 		var buf bytes.Buffer
 		debugf("arg[%d] = %#v", i, arg)
-		format.Node(&buf, token.NewFileSet(), arg)
+		err = format.Node(&buf, token.NewFileSet(), arg)
+		if err != nil {
+			fatalf("Failed to format %q: %v", s, err)
+		}
 		s := buf.String()
 		debugf("parsed = %q", s)
 		args = append(args, s)
