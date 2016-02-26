@@ -184,6 +184,10 @@ moment (programmer laziness - will fix at some point!)
 Changelog
 ---------
 
+  * v0.05 - 2016-02-26
+    * Fix docs and examples
+    * More set methods - thanks Adam Willis
+    * Fix missing error check in code generation
   * v0.04 - 2014-12-23
     * Fixed multi-line type declarations
   * v0.03 - 2014-12-22
