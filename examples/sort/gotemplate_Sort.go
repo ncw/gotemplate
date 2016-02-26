@@ -7,10 +7,11 @@
 // Package sort provides primitives for sorting slices of A.
 package main
 
-// A is the element in the slice []A we are sorting
-// Less is a function to compare two As
+// An A is the element in the slice []A we are sorting
 //
 // template type Sort(A, Less)
+
+// Less is a function to compare two As
 
 func swapSort(data []string, i, j int) {
 	data[i], data[j] = data[j], data[i]

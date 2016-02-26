@@ -1,30 +1,33 @@
-// Template Set type
+// Package set is a template Set type
 //
 // Tries to be similar to Python's set type
 package main
 
+// An A is the element of the set
+//
 // template type Set(A)
 
-// Store struct{} which are 0 size as the members in the map
+// SetNothing is used as a zero sized member in the map
 type mySetNothing struct{}
 
+// Set provides a general purpose set modeled on Python's set type.
 type mySet struct {
 	m map[string]mySetNothing
 }
 
-// Returns a new empty set with the given capacity
+// NewSizedSet returns a new empty set with the given capacity
 func newSizedMySet(capacity int) *mySet {
 	return &mySet{
 		m: make(map[string]mySetNothing, capacity),
 	}
 }
 
-// Returns a new empty set
+// NewSet returns a new empty set
 func newMySet() *mySet {
 	return newSizedMySet(0)
 }
 
-// Returns the number of elements in the set
+// Len returns the number of elements in the set
 func (s *mySet) Len() int {
 	return len(s.m)
 }

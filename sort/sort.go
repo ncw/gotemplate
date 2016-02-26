@@ -7,12 +7,12 @@
 // Package sort provides primitives for sorting slices of A.
 package sort
 
-// A is the element in the slice []A we are sorting
-// Less is a function to compare two As
+// An A is the element in the slice []A we are sorting
 //
 // template type Sort(A, Less)
 type A int
 
+// Less is a function to compare two As
 func Less(a A, b A) bool {
 	return a < b
 }
