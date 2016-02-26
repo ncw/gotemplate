@@ -253,4 +253,5 @@ Contributors
 ------------
 
   * Patrick Oyarzun <patrickoyarzun@gmail.com>
+  * Adam Willis <akwillis@inbox.com>
   * Paul Jolly <paul@myitcv.org.uk>
