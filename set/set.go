@@ -219,7 +219,7 @@ A:
 	return true
 }
 
-// IsDisjoint returns a bool indicating whether this set and other set have any elements in common.
+// IsDisjoint returns a bool indicating whether this set and other set have no elements in common.
 func (s *Set) IsDisjoint(other *Set) bool {
 	for v := range s.m {
 		if other.Contains(v) {

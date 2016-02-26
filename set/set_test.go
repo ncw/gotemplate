@@ -240,3 +240,100 @@ func TestSetUpdate(t *testing.T) {
 	assertEqual(t, b.Update(a), []int{1, 2, 3})
 	assertEqual(t, b, []int{1, 2, 3})
 }
+
+func TestSetIsSuperset(t *testing.T) {
+	a := NewSet().Add(1).Add(2).Add(3)
+	b := NewSet().Add(1).Add(2)
+	assertEqual(t, a, []int{1, 2, 3})
+	assertEqual(t, b, []int{1, 2})
+	//test if superset returns correctly with strict true
+	if a.IsSuperset(true, b) == false {
+		t.Fatal()
+	}
+	//test if superset returns correctly with strict false
+	if a.IsSuperset(false, b) == false {
+		t.Fatal()
+	}
+
+	b.Add(3)
+	assertEqual(t, a, []int{1, 2, 3})
+	assertEqual(t, b, []int{1, 2, 3})
+	//test if superset returns correctly with strict true
+	if a.IsSuperset(true, b) == true {
+		t.Fatal()
+	}
+	//test if superset returns correctly with strict false
+	if a.IsSuperset(false, b) == false {
+		t.Fatal()
+	}
+}
+
+func TestSetIsSubset(t *testing.T) {
+	a := NewSet().Add(1).Add(2).Add(3)
+	b := NewSet().Add(1).Add(2)
+	assertEqual(t, a, []int{1, 2, 3})
+	assertEqual(t, b, []int{1, 2})
+	//test if superset returns correctly with strict true
+	if b.IsSubset(true, a) == false {
+		t.Fatal()
+	}
+	//test if superset returns correctly with strict false
+	if b.IsSubset(false, a) == false {
+		t.Fatal()
+	}
+	b.Add(3)
+	assertEqual(t, a, []int{1, 2, 3})
+	assertEqual(t, b, []int{1, 2, 3})
+	//test if superset returns correctly with strict true
+	if b.IsSubset(true, a) == true {
+		t.Fatal()
+	}
+	//test if superset returns correctly with strict false
+	if b.IsSubset(false, a) == false {
+		t.Fatal()
+	}
+}
+
+func TestSetIsDisjoint(t *testing.T) {
+	a := NewSet().Add(1)
+	b := NewSet().Add(2)
+	assertEqual(t, a, []int{1})
+	assertEqual(t, b, []int{2})
+	if a.IsDisjoint(b) == false || b.IsDisjoint(a) == false {
+		t.Fatal()
+	}
+
+	c := NewSet().Add(1).Add(2)
+	d := NewSet().Add(2)
+	assertEqual(t, c, []int{1, 2})
+	assertEqual(t, d, []int{2})
+	if c.IsDisjoint(d) == true || d.IsDisjoint(c) == true {
+		t.Fatal()
+	}
+
+	e := NewSet().Add(1)
+	f := NewSet().Add(1).Add(2)
+	assertEqual(t, e, []int{1})
+	assertEqual(t, f, []int{1, 2})
+	if e.IsDisjoint(f) == true || f.IsDisjoint(e) == true {
+		t.Fatal()
+	}
+}
+
+func TestSetSymmetricDifference(t *testing.T) {
+	a := NewSet().Add(1).Add(2)
+	b := NewSet().Add(2).Add(3)
+	c := a.SymmetricDifference(b)
+	assertEqual(t, a, []int{1, 2})
+	assertEqual(t, b, []int{2, 3})
+	assertEqual(t, c, []int{1, 3})
+}
+
+func TestSetSymmetricDifferenceUpdate(t *testing.T) {
+	a := NewSet().Add(1).Add(2)
+	b := NewSet().Add(2).Add(3)
+	assertEqual(t, a, []int{1, 2})
+	assertEqual(t, b, []int{2, 3})
+	a.SymmetricDifferenceUpdate(b)
+	assertEqual(t, a, []int{1, 3})
+}
