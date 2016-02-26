@@ -29,46 +29,46 @@ func assertEqual(t *testing.T, s *Set, b []int) {
 func TestNewSizedSet(t *testing.T) {
 	a := NewSizedSet(0)
 	if a.Len() != 0 {
-		t.Fatal()
+		t.Fatal("length nonzero")
 	}
 	a = NewSizedSet(100)
 	if a.Len() != 0 {
-		t.Fatal()
+		t.Fatal("length nonzero")
 	}
 }
 
 func TestNewSet(t *testing.T) {
 	a := NewSet()
 	if a.Len() != 0 {
-		t.Fatal()
+		t.Fatal("length nonzero")
 	}
 }
 
 func TestSetLen(t *testing.T) {
 	a := NewSet()
 	if a.Len() != 0 {
-		t.Fatal()
+		t.Fatal("length nonzero")
 	}
 	a.Add(1)
 	if a.Len() != 1 {
-		t.Fatal()
+		t.Fatal("length not 1")
 	}
 	a.Discard(1)
 	if a.Len() != 0 {
-		t.Fatal()
+		t.Fatal("length nonzero")
 	}
 }
 
 func TestSetContains(t *testing.T) {
 	a := NewSet().Add(1)
 	if a.Contains(0) {
-		t.Fatal()
+		t.Fatal("0 found in set")
 	}
 	if !a.Contains(1) {
-		t.Fatal()
+		t.Fatal("1 not found in set")
 	}
 	if a.Contains(2) {
-		t.Fatal()
+		t.Fatal("2 found in set")
 	}
 }
 
@@ -91,10 +91,10 @@ func TestSetRemove(t *testing.T) {
 	a := NewSet().Add(1).Add(3)
 	assertEqual(t, a, []int{1, 3})
 	if a.Remove(1) != true {
-		t.Fatal()
+		t.Fatal("1 not in set")
 	}
 	if a.Remove(2) != false {
-		t.Fatal()
+		t.Fatal("2 in set")
 	}
 	assertEqual(t, a, []int{3})
 }
@@ -104,11 +104,11 @@ func TestSetPop(t *testing.T) {
 	assertEqual(t, a, []int{1, 3})
 	elem, found := a.Pop(1)
 	if elem != 1 || found != true {
-		t.Fatal()
+		t.Fatal("pop existing element failed")
 	}
 	elem, found = a.Pop(2)
 	if elem != 2 || found != false {
-		t.Fatal()
+		t.Fatal("pop non-existing element failed")
 	}
 	assertEqual(t, a, []int{3})
 }
@@ -118,13 +118,13 @@ func TestSetAsList(t *testing.T) {
 	assertEqual(t, a, []int{1, 3})
 	as := a.AsList()
 	if len(as) != 2 {
-		t.Fatal()
+		t.Fatal("length != 2")
 	}
 	if as[1] < as[0] {
 		as[0], as[1] = as[1], as[0]
 	}
 	if as[0] != 1 || as[1] != 3 {
-		t.Fatal()
+		t.Fatal("set as list failed")
 	}
 }
 
@@ -141,7 +141,7 @@ func TestSetCopy(t *testing.T) {
 	b := a.Copy()
 	assertEqual(t, b, []int{1, 3})
 	if a == b || &a.m == &b.m {
-		t.Fatal()
+		t.Fatal("set copy failed")
 	}
 }
 
@@ -248,11 +248,11 @@ func TestSetIsSuperset(t *testing.T) {
 	assertEqual(t, b, []int{1, 2})
 	//test if superset returns correctly with strict true
 	if a.IsSuperset(true, b) == false {
-		t.Fatal()
+		t.Fatal("strict superset failed")
 	}
 	//test if superset returns correctly with strict false
 	if a.IsSuperset(false, b) == false {
-		t.Fatal()
+		t.Fatal("non-strict superset failed")
 	}
 
 	b.Add(3)
@@ -260,11 +260,11 @@ func TestSetIsSuperset(t *testing.T) {
 	assertEqual(t, b, []int{1, 2, 3})
 	//test if superset returns correctly with strict true
 	if a.IsSuperset(true, b) == true {
-		t.Fatal()
+		t.Fatal("strict superset failed")
 	}
 	//test if superset returns correctly with strict false
 	if a.IsSuperset(false, b) == false {
-		t.Fatal()
+		t.Fatal("non-strict superset failed")
 	}
 }
 
@@ -275,22 +275,22 @@ func TestSetIsSubset(t *testing.T) {
 	assertEqual(t, b, []int{1, 2})
 	//test if subset returns correctly with strict true
 	if b.IsSubset(true, a) == false {
-		t.Fatal()
+		t.Fatal("strict subset failed")
 	}
 	//test if subset returns correctly with strict false
 	if b.IsSubset(false, a) == false {
-		t.Fatal()
+		t.Fatal("non-strict subset failed")
 	}
 	b.Add(3)
 	assertEqual(t, a, []int{1, 2, 3})
 	assertEqual(t, b, []int{1, 2, 3})
 	//test if subset returns correctly with strict true
 	if b.IsSubset(true, a) == true {
-		t.Fatal()
+		t.Fatal("strict subset failed")
 	}
 	//test if subset returns correctly with strict false
 	if b.IsSubset(false, a) == false {
-		t.Fatal()
+		t.Fatal("non-strict subset failed")
 	}
 }
 
@@ -300,7 +300,7 @@ func TestSetIsDisjoint(t *testing.T) {
 	assertEqual(t, a, []int{1})
 	assertEqual(t, b, []int{2})
 	if a.IsDisjoint(b) == false || b.IsDisjoint(a) == false {
-		t.Fatal()
+		t.Fatal("disjoint failed #1")
 	}
 
 	c := NewSet().Add(1).Add(2)
@@ -308,7 +308,7 @@ func TestSetIsDisjoint(t *testing.T) {
 	assertEqual(t, c, []int{1, 2})
 	assertEqual(t, d, []int{2})
 	if c.IsDisjoint(d) == true || d.IsDisjoint(c) == true {
-		t.Fatal()
+		t.Fatal("disjoint failed #2")
 	}
 
 	e := NewSet().Add(1)
@@ -316,7 +316,7 @@ func TestSetIsDisjoint(t *testing.T) {
 	assertEqual(t, e, []int{1})
 	assertEqual(t, f, []int{1, 2})
 	if e.IsDisjoint(f) == true || f.IsDisjoint(e) == true {
-		t.Fatal()
+		t.Fatal("disjoint failed #3")
 	}
 }
 
