@@ -246,3 +246,4 @@ Contributors
 ------------
 
   * Patrick Oyarzun <patrickoyarzun@gmail.com>
+  * Adam Willis <akwillis@inbox.com>
