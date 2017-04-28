@@ -113,7 +113,7 @@ func parseTemplateAndArgs(s string) (name string, args []string) {
 // "template type Set(A)"
 var matchTemplateType = regexp.MustCompile(`^//\s*template\s+type\s+(\w+\s*.*?)\s*$`)
 
-func (t *template) findTemplateDefinition(f *ast.File) {
+func (t *template) findTemplateDefinition(f *ast.File) bool {
 	// Inspect the comments
 	t.templateName = ""
 	t.templateArgs = nil
@@ -129,12 +129,14 @@ func (t *template) findTemplateDefinition(f *ast.File) {
 		}
 	}
 	if t.templateName == "" {
-		fatalf("Didn't find template definition in %s", t.inputFile)
+		return false
 	}
 	if len(t.templateArgs) != len(t.Args) {
 		fatalf("Wrong number of arguments - template is expecting %d but %d supplied", len(t.Args), len(t.templateArgs))
 	}
 	debugf("templateName = %v, templateArgs = %v", t.templateName, t.templateArgs)
+
+	return true
 }
 
 // Parses a file into a Fileset and Ast
@@ -177,13 +179,8 @@ func (t *template) isTemplateArgument(name string) bool {
 }
 
 // Parses the template file
-func (t *template) parse(inputFile string) {
-	t.inputFile = inputFile
-	// Make the name mappings
+func (t *template) parse(fset *token.FileSet, f *ast.File) {
 	t.newIsPublic = ast.IsExported(t.Name)
-
-	fset, f := parseFile(inputFile, nil)
-	t.findTemplateDefinition(f)
 
 	// debugf("Decls = %#v", f.Decls)
 	// Find names which need to be adjusted
@@ -351,14 +348,27 @@ func (t *template) instantiate() {
 	// FIXME CgoFiles ?
 	debugf("Go files = %#v", p.GoFiles)
 
-	if len(p.GoFiles) == 0 {
-		fatalf("No go files found for package '%s'", t.Package)
-	}
-	// FIXME
-	if len(p.GoFiles) != 1 {
-		fatalf("Found more than one go file in '%s' - can only cope with 1 for the moment, sorry", t.Package)
+	count := 0
+
+	var fset *token.FileSet
+	var file *ast.File
+
+	for _, f := range p.GoFiles {
+		templateFilePath := path.Join(p.Dir, f)
+		fset, file = parseFile(templateFilePath, nil)
+		if v := t.findTemplateDefinition(file); v {
+			t.inputFile = templateFilePath
+			count++
+		}
 	}
 
-	templateFilePath := path.Join(p.Dir, p.GoFiles[0])
-	t.parse(templateFilePath)
+	if count == 0 {
+		fatalf("Failed to find a .go file with a template definition in %v", t.Package)
+	}
+
+	if count > 1 {
+		fatalf("Found more than template definition %s - can only cope with 1 for the moment, sorry", t.Package)
+	}
+
+	t.parse(fset, file)
 }
