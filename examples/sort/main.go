@@ -8,7 +8,7 @@ import "fmt"
 // Regenerate the templates with "go generate"
 
 // Sort strings using the less function
-//go:generate gotemplate "github.com/ncw/gotemplate/sort" "Sort(string, less)"
+//go:generate gotemplate -outfmt gen_%v_gotemplate "github.com/ncw/gotemplate/sort" "Sort(string, less)"
 
 // Sort floats using the lt function
 //go:generate gotemplate "github.com/ncw/gotemplate/sort" "SortF(float64, lt)"
