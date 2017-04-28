@@ -26,6 +26,7 @@ do replacements in comments too?
 import (
 	"flag"
 	"fmt"
+	"strings"
 
 	"log"
 	"os"
@@ -36,6 +37,8 @@ import (
 var (
 	// Flags
 	verbose = flag.Bool("v", false, "Verbose - print lots of stuff")
+	outfile = flag.String("outfmt", "gotemplate_%v", "the format of the output file; must contain a single instance of the %v verb\n"+
+		"\twhich will be replaced with the template instance name")
 )
 
 // Logging function
@@ -67,8 +70,20 @@ func usage() {
 }
 
 func main() {
+	log.SetFlags(0)
+	log.SetPrefix("")
+
 	flag.Usage = usage
 	flag.Parse()
+
+	// verify that *outfile contains exactly one occurrence of the %v verb
+	// and no other occurences of %
+	if c := strings.Replace(*outfile, "%v", "", 1); c == *outfile ||
+		strings.Index(c, "%") != -1 {
+
+		fatalf("Invalid outfile format")
+	}
+
 	args := flag.Args()
 	if len(args) != 2 {
 		fatalf("Need 2 arguments, package and parameters")
