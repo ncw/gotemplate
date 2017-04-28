@@ -36,6 +36,7 @@ import (
 var (
 	// Flags
 	verbose = flag.Bool("v", false, "Verbose - print lots of stuff")
+	outfile = flag.String("outfmt", "gotemplate_%v", "the format of the output file")
 )
 
 // Logging function
@@ -67,8 +68,46 @@ func usage() {
 }
 
 func main() {
+	log.SetFlags(0)
+	log.SetPrefix("")
+
 	flag.Usage = usage
 	flag.Parse()
+
+	// do some basic validation on the outfile format
+	// indexing is safe because we're searching for an ascii char
+	{
+		found := 0
+		c := *outfile
+
+		for len(c) != 0 {
+			l := c[0]
+			c = c[1:]
+
+			if l != '%' {
+				continue
+			}
+
+			// end of string
+			if len(c) == 0 {
+				fatalf("invalid outfile format ending in %v", "%")
+			}
+
+			switch c[0] {
+			case 'v':
+				found++
+			default:
+				fatalf("outfile format contains invalid verb: %v", "%"+string(c[0]))
+			}
+
+			c = c[1:]
+		}
+
+		if found != 1 {
+			fatalf("could not find %v in outfile format", "%v")
+		}
+	}
+
 	args := flag.Args()
 	if len(args) != 2 {
 		fatalf("Need 2 arguments, package and parameters")
