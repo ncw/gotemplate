@@ -44,6 +44,11 @@ is still capitalized when it is not at the beginning of the new name.
     substituting "github.com/ncw/gotemplate/set" with mySet(string) into package main
     Written 'gotemplate_mySet.go'
 
+If you wish to change what the output file names look like then you
+can use the `-outfmt format` flag.  The format must contain a single
+instance of the `%v` verb which will be replaced with the template
+instance name (default "gotemplate_%v")
+
 Instantiating the templates into your project gives them the ability
 to use internal types from your project.
 
@@ -184,6 +189,8 @@ moment (programmer laziness - will fix at some point!)
 Changelog
 ---------
 
+  * v0.05 - 2017-05-05
+    * Add -outfmt string (thanks Paul Jolly)
   * v0.04 - 2014-12-23
     * Fixed multi-line type declarations
   * v0.03 - 2014-12-22
