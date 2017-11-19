@@ -74,6 +74,8 @@ func main() {
 	log.SetPrefix("")
 
 	flag.Usage = usage
+	var imports paths
+	flag.Var(&imports, "I", "additional `path` to import")
 	flag.Parse()
 
 	// verify that *outfile contains exactly one occurrence of the %v verb
@@ -95,5 +97,18 @@ func main() {
 	}
 
 	t := newTemplate(cwd, args[0], args[1])
+	t.addImports(imports)
 	t.instantiate()
+}
+
+// Parsing of -I flags
+type paths []string
+
+func (ps *paths) Set(arg string) error {
+	*ps = append(*ps, arg)
+	return nil
+}
+
+func (ps *paths) String() string {
+	return fmt.Sprint([]string(*ps))
 }

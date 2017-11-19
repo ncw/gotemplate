@@ -27,6 +27,7 @@ type template struct {
 	Args         []string
 	NewPackage   string
 	Dir          string
+	importPaths  []string
 	templateName string
 	templateArgs []string
 	mappings     map[string]string
@@ -55,6 +56,11 @@ func newTemplate(dir, pkg, templateArgsString string) *template {
 		mappings:   make(map[string]string),
 		NewPackage: findPackageName(),
 	}
+}
+
+// Add import paths
+func (t *template) addImports(paths []string) {
+	t.importPaths = paths
 }
 
 // Add a mapping for identifier
@@ -192,6 +198,34 @@ func (t *template) parse(inputFile string) {
 	// Find names which need to be adjusted
 	namesToMangle := []string{}
 	newDecls := []ast.Decl{}
+
+	// Insert additional imports
+	if len(t.importPaths) != 0 {
+		// Use a fake position close to the package declaration to make sure
+		// the import clause is near the beginning of the file.
+		pos := f.Package + 10
+		specs := make([]ast.Spec, len(t.importPaths))
+		for i, path := range t.importPaths {
+			debugf("Adding import path %q", path)
+			spec := &ast.ImportSpec{
+				Path: &ast.BasicLit{
+					Kind:  token.STRING,
+					Value: fmt.Sprintf("%q", path),
+				},
+				EndPos: pos,
+			}
+			specs[i] = spec
+			f.Imports = append(f.Imports, spec)
+		}
+		decl := &ast.GenDecl{
+			Tok:    token.IMPORT,
+			Lparen: pos,
+			Specs:  specs,
+			Rparen: pos,
+		}
+		newDecls = append(newDecls, decl)
+	}
+
 	for _, Decl := range f.Decls {
 		remove := false
 		switch d := Decl.(type) {
