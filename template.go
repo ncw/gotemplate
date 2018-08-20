@@ -255,6 +255,8 @@ func (t *template) parse(inputFile string) {
 			// A function definition
 			if d.Recv != nil {
 				// Has receiver so is a method - ignore this function
+			} else if d.Name.Name == "init" {
+				// Init function - ignore this function
 			} else {
 				//debugf("FuncDecl = %#v", d)
 				debugf("FuncDecl = %s", d.Name.Name)
