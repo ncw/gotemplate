@@ -29,6 +29,8 @@ import "fmt"
 // template type Set(A)
 type A int
 
+func init() {}
+
 type Set struct { a A }
 func NewSet(a A) A { return A(0) }
 func NewSizedSet(a A) A { return A(1) }
@@ -58,6 +60,8 @@ package main
 import "fmt"
 
 // template type Set(A)
+
+func init() {}
 
 type MySet struct{ a int }
 
@@ -89,6 +93,8 @@ package main
 import "fmt"
 
 // template type Set(A)
+
+func init() {}
 
 type mySet struct{ a float64 }
 
