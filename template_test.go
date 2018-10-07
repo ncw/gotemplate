@@ -13,6 +13,10 @@ import (
 	"testing"
 )
 
+func init() {
+	testingMode = true
+}
+
 type TestTemplate struct {
 	title   string
 	args    string
