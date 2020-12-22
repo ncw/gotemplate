@@ -8,7 +8,6 @@ import (
 	"go/ast"
 	"go/build"
 	"go/format"
-	"go/importer"
 	"go/parser"
 	"go/token"
 	"go/types"
@@ -19,6 +18,7 @@ import (
 	"strings"
 
 	"golang.org/x/tools/imports"
+	"golang.org/x/tools/go/packages"
 )
 
 var testingMode = false
@@ -195,17 +195,24 @@ func (t *template) parse(inputFile string) {
 	// Make the name mappings
 	t.newIsPublic = ast.IsExported(t.Name)
 
-	fset, f := parseFile(inputFile, nil)
-
-	conf := types.Config{Importer: importer.Default()}
-	info := &types.Info{
-		Defs: make(map[*ast.Ident]types.Object),
-		Uses: make(map[*ast.Ident]types.Object),
+	conf := &packages.Config{
+		Mode: packages.LoadSyntax,
 	}
-	_, err := conf.Check(inputFile, fset, []*ast.File{f}, info)
+
+	pkgs, err := packages.Load(conf, inputFile)
 	if err != nil {
 		fatalf("Type checking error: %v", err)
 	}
+
+	pkg := pkgs[0]
+
+	if len(pkg.Errors) > 0 {
+		fatalf("Type checking error: %v", pkg.Errors[0])
+	}
+
+	info := pkg.TypesInfo
+	fset := pkg.Fset
+	f := pkg.Syntax[0]
 
 	t.findTemplateDefinition(f)
 
