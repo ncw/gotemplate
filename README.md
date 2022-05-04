@@ -1,6 +1,13 @@
 Go templates
 ============
 
+**Note:** with the advent of [generics](https://go.dev/doc/tutorial/generics)
+in go 1.18 this package is now obsolete. Please use go 1.18 and its
+generic facilities instead. I will keep this package here for existing
+users, but I won't be updating it any more - @ncw
+
+----
+
 This tool manages package based templates for the Go language using
 "go generate" which requires go 1.4.
 
